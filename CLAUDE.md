@@ -46,4 +46,5 @@ All data lives in Firestore under `users/{uid}/`:
 
 1. `todoItems`: assignedDate ASC, sortOrder ASC
 2. `todoItems`: slot ASC, completed ASC, sortOrder ASC
-3. `dailyTaskCompletions`: date ASC
+3. `todoItems`: completed ASC, completedAt DESC (for history view)
+4. `dailyTaskCompletions`: date ASC
