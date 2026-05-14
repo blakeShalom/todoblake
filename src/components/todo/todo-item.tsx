@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp, Pencil, Repeat } from "lucide-react";
 import { TodoItem as TodoItemType } from "@/lib/types";
 import { format, isPast, isToday } from "date-fns";
 
@@ -38,6 +38,12 @@ export function TodoItem({ item, onToggle, onDelete, onEdit }: TodoItemProps) {
         >
           {item.title}
         </span>
+        {item.recurrence && (
+          <Badge variant="outline" className="gap-1 text-xs">
+            <Repeat className="h-3 w-3" />
+            {item.recurrence}
+          </Badge>
+        )}
         {item.deadline && (
           <Badge variant={deadlineBadgeVariant()} className="text-xs">
             {format(new Date(item.deadline + "T00:00:00"), "MMM d")}

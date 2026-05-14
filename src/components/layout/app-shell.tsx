@@ -6,6 +6,7 @@ import { CalendarCheck, List, RotateCcw, CheckCircle, LogOut } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-provider";
 import { signOut } from "@/lib/firebase/auth";
+import { QuickAddDialog } from "@/components/todo/quick-add-dialog";
 
 const NAV_ITEMS = [
   { href: "/today", label: "Today", icon: CalendarCheck },
@@ -66,6 +67,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </div>
       </nav>
+
+      <QuickAddDialog />
 
       {/* Desktop sidebar nav (hidden on mobile) */}
       <aside className="fixed left-0 top-14 hidden h-[calc(100vh-3.5rem)] w-56 border-r bg-background p-4 md:block">

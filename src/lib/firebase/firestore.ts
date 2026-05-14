@@ -11,7 +11,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { getFirebaseDb } from "./config";
-import { SlotType, TodoItem, DailyTask } from "@/lib/types";
+import { SlotType, TodoItem, DailyTask, RecurrenceFrequency } from "@/lib/types";
 
 function todoItemsCollection(uid: string) {
   return collection(getFirebaseDb(), "users", uid, "todoItems");
@@ -33,12 +33,22 @@ export function todayItemsQuery(uid: string, date: string) {
   );
 }
 
-export function backlogQuery(uid: string) {
+export function backlogQuery(uid: string, today: string) {
   return query(
     todoItemsCollection(uid),
     where("slot", "==", "backlog"),
+    where("scheduledDate", "<=", today),
     orderBy("completed", "asc"),
     orderBy("sortOrder", "asc")
+  );
+}
+
+export function scheduledQuery(uid: string, today: string) {
+  return query(
+    todoItemsCollection(uid),
+    where("slot", "==", "backlog"),
+    where("scheduledDate", ">", today),
+    orderBy("scheduledDate", "asc")
   );
 }
 
@@ -64,7 +74,9 @@ export async function addTodoItem(
     description?: string;
     slot: SlotType;
     assignedDate: string | null;
+    scheduledDate?: string | null;
     deadline?: string | null;
+    recurrence?: RecurrenceFrequency | null;
     sortOrder: number;
   }
 ): Promise<string> {
@@ -73,9 +85,11 @@ export async function addTodoItem(
     description: data.description || "",
     slot: data.slot,
     assignedDate: data.assignedDate,
+    scheduledDate: data.scheduledDate || null,
     deadline: data.deadline || null,
     completed: false,
     completedAt: null,
+    recurrence: data.recurrence || null,
     sortOrder: data.sortOrder,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -86,7 +100,8 @@ export async function addTodoItem(
 export async function updateTodoItem(
   uid: string,
   itemId: string,
-  data: Partial<Pick<TodoItem, "title" | "description" | "slot" | "assignedDate" | "deadline" | "completed" | "sortOrder">>
+  data: Partial<Pick<TodoItem, "title" | "description" | "slot" | "assignedDate" | "scheduledDate" | "deadline" | "completed" | "sortOrder" | "recurrence">>,
+  fullItem?: TodoItem
 ) {
   const db = getFirebaseDb();
   const docRef = doc(db, "users", uid, "todoItems", itemId);
@@ -97,6 +112,49 @@ export async function updateTodoItem(
     updateData.completedAt = null;
   }
   await updateDoc(docRef, updateData);
+
+  if (data.completed === true && fullItem?.recurrence) {
+    const nextDate = getNextScheduledDate(
+      fullItem.scheduledDate || new Date().toISOString().slice(0, 10),
+      fullItem.recurrence
+    );
+    await addDoc(collection(db, "users", uid, "todoItems"), {
+      title: fullItem.title,
+      description: fullItem.description,
+      slot: "backlog",
+      assignedDate: null,
+      scheduledDate: nextDate,
+      deadline: null,
+      completed: false,
+      completedAt: null,
+      recurrence: fullItem.recurrence,
+      sortOrder: Date.now(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+}
+
+function getNextScheduledDate(fromDate: string, frequency: RecurrenceFrequency): string {
+  const date = new Date(fromDate + "T00:00:00");
+  switch (frequency) {
+    case "daily":
+      date.setDate(date.getDate() + 1);
+      break;
+    case "weekly":
+      date.setDate(date.getDate() + 7);
+      break;
+    case "biweekly":
+      date.setDate(date.getDate() + 14);
+      break;
+    case "monthly":
+      date.setMonth(date.getMonth() + 1);
+      break;
+    case "quarterly":
+      date.setMonth(date.getMonth() + 3);
+      break;
+  }
+  return date.toISOString().slice(0, 10);
 }
 
 export async function deleteTodoItem(uid: string, itemId: string) {

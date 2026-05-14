@@ -1,12 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { onSnapshot, query, collection, where, orderBy, Timestamp } from "firebase/firestore";
+import { onSnapshot, query, collection, where, orderBy, Timestamp, getDocs } from "firebase/firestore";
 import { useAuth } from "@/components/auth/auth-provider";
 import { getFirebaseDb } from "@/lib/firebase/config";
-import { TodoItem } from "@/lib/types";
+import { TodoItem, DailyTaskCompletion } from "@/lib/types";
 
 export type TimeFilter = "24h" | "7d" | "30d" | "all";
+
+export interface DailyCompletionWithTitle {
+  id: string;
+  taskTitle: string;
+  date: string;
+  completedAt: Timestamp;
+}
 
 function getStartTimestamp(filter: TimeFilter): Timestamp | null {
   if (filter === "all") return null;
@@ -20,6 +27,7 @@ function getStartTimestamp(filter: TimeFilter): Timestamp | null {
 export function useHistory(filter: TimeFilter) {
   const { user } = useAuth();
   const [items, setItems] = useState<TodoItem[]>([]);
+  const [dailyCompletions, setDailyCompletions] = useState<DailyCompletionWithTitle[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -48,5 +56,44 @@ export function useHistory(filter: TimeFilter) {
     return unsubscribe;
   }, [user, filter]);
 
-  return { items, loading };
+  useEffect(() => {
+    if (!user) return;
+
+    const db = getFirebaseDb();
+    const completionsCol = collection(db, "users", user.uid, "dailyTaskCompletions");
+    const startTs = getStartTimestamp(filter);
+
+    const constraints = [
+      ...(startTs ? [where("completedAt", ">=", startTs)] : []),
+      orderBy("completedAt", "desc"),
+    ];
+
+    const q = query(completionsCol, ...constraints);
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const completions = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as DailyTaskCompletion[];
+
+      const tasksCol = collection(db, "users", user.uid, "dailyTasks");
+      const tasksSnap = await getDocs(tasksCol);
+      const taskNames = new Map<string, string>();
+      tasksSnap.docs.forEach((doc) => {
+        taskNames.set(doc.id, doc.data().title);
+      });
+
+      const results: DailyCompletionWithTitle[] = completions.map((c) => ({
+        id: c.id,
+        taskTitle: taskNames.get(c.taskId) || "Unknown task",
+        date: c.date,
+        completedAt: c.completedAt,
+      }));
+
+      setDailyCompletions(results);
+    });
+
+    return unsubscribe;
+  }, [user, filter]);
+
+  return { items, dailyCompletions, loading };
 }

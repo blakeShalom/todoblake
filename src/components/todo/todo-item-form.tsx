@@ -10,7 +10,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SlotType } from "@/lib/types";
+import { SlotType, RecurrenceFrequency } from "@/lib/types";
+
+const RECURRENCE_OPTIONS: { value: RecurrenceFrequency | "none"; label: string }[] = [
+  { value: "none", label: "None" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "biweekly", label: "Biweekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
+];
 
 interface TodoItemFormProps {
   open: boolean;
@@ -19,13 +28,18 @@ interface TodoItemFormProps {
     title: string;
     description: string;
     deadline: string | null;
+    scheduledDate: string | null;
+    recurrence: RecurrenceFrequency | null;
     slot: SlotType;
   }) => void;
   defaultSlot?: SlotType;
+  showScheduling?: boolean;
   initialData?: {
     title: string;
     description: string;
     deadline: string | null;
+    scheduledDate?: string | null;
+    recurrence?: RecurrenceFrequency | null;
   };
 }
 
@@ -34,11 +48,16 @@ export function TodoItemForm({
   onClose,
   onSubmit,
   defaultSlot = "backlog",
+  showScheduling = false,
   initialData,
 }: TodoItemFormProps) {
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.description || "");
   const [deadline, setDeadline] = useState(initialData?.deadline || "");
+  const [scheduledDate, setScheduledDate] = useState(initialData?.scheduledDate || "");
+  const [recurrence, setRecurrence] = useState<RecurrenceFrequency | "none">(
+    initialData?.recurrence || "none"
+  );
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -47,11 +66,15 @@ export function TodoItemForm({
       title: title.trim(),
       description: description.trim(),
       deadline: deadline || null,
+      scheduledDate: scheduledDate || null,
+      recurrence: recurrence === "none" ? null : recurrence,
       slot: defaultSlot,
     });
     setTitle("");
     setDescription("");
     setDeadline("");
+    setScheduledDate("");
+    setRecurrence("none");
     onClose();
   }
 
@@ -91,6 +114,40 @@ export function TodoItemForm({
               className="mt-1"
             />
           </div>
+          {showScheduling && (
+            <>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">
+                  Schedule for date (optional)
+                </label>
+                <Input
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">
+                  Recurrence
+                </label>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {RECURRENCE_OPTIONS.map((opt) => (
+                    <Button
+                      key={opt.value}
+                      type="button"
+                      variant={recurrence === opt.value ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => setRecurrence(opt.value)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel

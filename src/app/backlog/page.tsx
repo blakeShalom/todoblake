@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, ArrowUp, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { AppShell } from "@/components/layout/app-shell";
 import { TodoItem } from "@/components/todo/todo-item";
@@ -15,14 +17,32 @@ import {
   updateTodoItem,
   deleteTodoItem,
 } from "@/lib/firebase/firestore";
-import { TodoItem as TodoItemType, SlotType } from "@/lib/types";
+import { TodoItem as TodoItemType, SlotType, RecurrenceFrequency } from "@/lib/types";
+
+type PromoteSlot = "essential" | "priority" | "outcome";
+
+const PROMOTE_OPTIONS: { value: PromoteSlot; label: string; icon: string }[] = [
+  { value: "essential", label: "Essential", icon: "★" },
+  { value: "priority", label: "Priority", icon: "◆" },
+  { value: "outcome", label: "Outcome", icon: "●" },
+];
+
+const RECURRENCE_LABELS: Record<RecurrenceFrequency, string> = {
+  daily: "Daily",
+  weekly: "Weekly",
+  biweekly: "Biweekly",
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+};
 
 export default function BacklogPage() {
-  const { items, loading } = useBacklog();
+  const { items, scheduled, loading } = useBacklog();
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<TodoItemType | null>(null);
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showScheduled, setShowScheduled] = useState(false);
 
   const filtered = items.filter((item) => {
     if (filter === "active") return !item.completed;
@@ -30,10 +50,35 @@ export default function BacklogPage() {
     return true;
   });
 
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
+  async function handlePromoteSelected(slot: PromoteSlot) {
+    if (!user || selected.size === 0) return;
+    const today = format(new Date(), "yyyy-MM-dd");
+    const promises = Array.from(selected).map((id) =>
+      updateTodoItem(user.uid, id, { slot, assignedDate: today })
+    );
+    await Promise.all(promises);
+    clearSelection();
+  }
+
   async function handleAdd(data: {
     title: string;
     description: string;
     deadline: string | null;
+    scheduledDate: string | null;
+    recurrence: RecurrenceFrequency | null;
     slot: SlotType;
   }) {
     if (!user) return;
@@ -42,14 +87,17 @@ export default function BacklogPage() {
       description: data.description,
       slot: "backlog",
       assignedDate: null,
+      scheduledDate: data.scheduledDate,
       deadline: data.deadline,
+      recurrence: data.recurrence,
       sortOrder: items.length,
     });
   }
 
   async function handleToggle(id: string, completed: boolean) {
     if (!user) return;
-    await updateTodoItem(user.uid, id, { completed });
+    const item = items.find((i) => i.id === id);
+    await updateTodoItem(user.uid, id, { completed }, item);
   }
 
   async function handleDelete(id: string) {
@@ -61,22 +109,18 @@ export default function BacklogPage() {
     title: string;
     description: string;
     deadline: string | null;
+    scheduledDate: string | null;
+    recurrence: RecurrenceFrequency | null;
   }) {
     if (!user || !editItem) return;
     await updateTodoItem(user.uid, editItem.id, {
       title: data.title,
       description: data.description,
       deadline: data.deadline,
+      scheduledDate: data.scheduledDate,
+      recurrence: data.recurrence,
     });
     setEditItem(null);
-  }
-
-  async function handlePromote(item: TodoItemType, slot: SlotType) {
-    if (!user) return;
-    await updateTodoItem(user.uid, item.id, {
-      slot,
-      assignedDate: format(new Date(), "yyyy-MM-dd"),
-    });
   }
 
   return (
@@ -85,14 +129,25 @@ export default function BacklogPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Backlog</h1>
-            <Button
-              size="sm"
-              className="gap-1"
-              onClick={() => setShowForm(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Add
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1"
+                onClick={() => setShowScheduled(!showScheduled)}
+              >
+                <Clock className="h-4 w-4" />
+                Scheduled{scheduled.length > 0 && ` (${scheduled.length})`}
+              </Button>
+              <Button
+                size="sm"
+                className="gap-1"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Add
+              </Button>
+            </div>
           </div>
 
           <div className="flex gap-2">
@@ -108,6 +163,34 @@ export default function BacklogPage() {
             ))}
           </div>
 
+          {selected.size > 0 && (
+            <div className="sticky top-16 z-30 flex items-center gap-2 rounded-lg border bg-background p-3 shadow-sm">
+              <ArrowUp className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">
+                {selected.size} selected — move to:
+              </span>
+              {PROMOTE_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.value}
+                  size="sm"
+                  variant="outline"
+                  className="gap-1 text-xs"
+                  onClick={() => handlePromoteSelected(opt.value)}
+                >
+                  {opt.icon} {opt.label}
+                </Button>
+              ))}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="ml-auto text-xs"
+                onClick={clearSelection}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -115,25 +198,22 @@ export default function BacklogPage() {
           ) : (
             <div className="space-y-1.5">
               {filtered.map((item) => (
-                <div key={item.id} className="relative">
-                  <TodoItem
-                    item={item}
-                    onToggle={handleToggle}
-                    onDelete={handleDelete}
-                    onEdit={setEditItem}
-                  />
+                <div key={item.id} className="flex items-center gap-2">
                   {!item.completed && (
-                    <div className="absolute right-2 top-2 hidden group-hover:flex">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => handlePromote(item, "outcome")}
-                      >
-                        → Today
-                      </Button>
-                    </div>
+                    <Checkbox
+                      checked={selected.has(item.id)}
+                      onCheckedChange={() => toggleSelect(item.id)}
+                      className="shrink-0"
+                    />
                   )}
+                  <div className="flex-1">
+                    <TodoItem
+                      item={item}
+                      onToggle={handleToggle}
+                      onDelete={handleDelete}
+                      onEdit={setEditItem}
+                    />
+                  </div>
                 </div>
               ))}
               {filtered.length === 0 && (
@@ -146,11 +226,38 @@ export default function BacklogPage() {
             </div>
           )}
 
+          {showScheduled && scheduled.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                <Clock className="h-4 w-4" /> Upcoming Scheduled
+              </h2>
+              <div className="space-y-1.5">
+                {scheduled.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 rounded-lg border p-3"
+                  >
+                    <span className="flex-1 text-sm">{item.title}</span>
+                    {item.recurrence && (
+                      <Badge variant="outline" className="text-xs">
+                        {RECURRENCE_LABELS[item.recurrence]}
+                      </Badge>
+                    )}
+                    <Badge variant="secondary" className="text-xs">
+                      {item.scheduledDate && format(new Date(item.scheduledDate + "T00:00:00"), "MMM d")}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <TodoItemForm
             open={showForm}
             onClose={() => setShowForm(false)}
             onSubmit={handleAdd}
             defaultSlot="backlog"
+            showScheduling
           />
 
           {editItem && (
@@ -159,10 +266,13 @@ export default function BacklogPage() {
               onClose={() => setEditItem(null)}
               onSubmit={handleEdit}
               defaultSlot="backlog"
+              showScheduling
               initialData={{
                 title: editItem.title,
                 description: editItem.description,
                 deadline: editItem.deadline,
+                scheduledDate: editItem.scheduledDate,
+                recurrence: editItem.recurrence,
               }}
             />
           )}

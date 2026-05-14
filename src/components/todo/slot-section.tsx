@@ -28,6 +28,8 @@ export function SlotSection({ title, icon, slot, items }: SlotSectionProps) {
     title: string;
     description: string;
     deadline: string | null;
+    scheduledDate: string | null;
+    recurrence: import("@/lib/types").RecurrenceFrequency | null;
   }) {
     if (!user) return;
     await addTodoItem(user.uid, {
@@ -42,7 +44,8 @@ export function SlotSection({ title, icon, slot, items }: SlotSectionProps) {
 
   async function handleToggle(id: string, completed: boolean) {
     if (!user) return;
-    await updateTodoItem(user.uid, id, { completed });
+    const item = items.find((i) => i.id === id);
+    await updateTodoItem(user.uid, id, { completed }, item);
   }
 
   async function handleDelete(id: string) {
@@ -54,6 +57,8 @@ export function SlotSection({ title, icon, slot, items }: SlotSectionProps) {
     title: string;
     description: string;
     deadline: string | null;
+    scheduledDate: string | null;
+    recurrence: import("@/lib/types").RecurrenceFrequency | null;
   }) {
     if (!user || !editItem) return;
     await updateTodoItem(user.uid, editItem.id, {

@@ -2,16 +2,20 @@ import { Timestamp } from "firebase/firestore";
 
 export type SlotType = "essential" | "priority" | "outcome" | "backlog";
 
+export type RecurrenceFrequency = "daily" | "weekly" | "biweekly" | "monthly" | "quarterly";
+
 export interface TodoItem {
   id: string;
   title: string;
   description: string;
   slot: SlotType;
   assignedDate: string | null;
+  scheduledDate: string | null;
   deadline: string | null;
   completed: boolean;
   completedAt: Timestamp | null;
   sortOrder: number;
+  recurrence: RecurrenceFrequency | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
