@@ -135,7 +135,7 @@ export async function updateTodoItem(
   }
 }
 
-function getNextScheduledDate(fromDate: string, frequency: RecurrenceFrequency): string {
+export function getNextScheduledDate(fromDate: string, frequency: RecurrenceFrequency): string {
   const date = new Date(fromDate + "T00:00:00");
   switch (frequency) {
     case "daily":
