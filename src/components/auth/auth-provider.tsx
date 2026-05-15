@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { User, onAuthStateChanged, getRedirectResult } from "firebase/auth";
+import { User, onAuthStateChanged } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase/config";
 import { createOrUpdateUserProfile } from "@/lib/firebase/auth";
 
@@ -18,15 +18,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const auth = getFirebaseAuth();
-    getRedirectResult(auth).then(async (result) => {
-      if (result?.user) {
-        await createOrUpdateUserProfile(result.user.uid, {
-          email: result.user.email!,
-          displayName: result.user.displayName!,
-          photoURL: result.user.photoURL,
-        });
-      }
-    }).catch(() => {});
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         await createOrUpdateUserProfile(user.uid, {
