@@ -2,7 +2,7 @@ import { Timestamp } from "firebase/firestore";
 
 export type SlotType = "essential" | "priority" | "outcome" | "backlog";
 
-export type RecurrenceFrequency = "daily" | "weekly" | "biweekly" | "monthly" | "quarterly";
+export type RecurrenceFrequency = "daily" | "weekly" | "biweekly" | "monthly" | "quarterly" | "semiannually" | "yearly";
 
 export interface TodoItem {
   id: string;

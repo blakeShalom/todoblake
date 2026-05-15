@@ -153,6 +153,12 @@ export function getNextScheduledDate(fromDate: string, frequency: RecurrenceFreq
     case "quarterly":
       date.setMonth(date.getMonth() + 3);
       break;
+    case "semiannually":
+      date.setMonth(date.getMonth() + 6);
+      break;
+    case "yearly":
+      date.setFullYear(date.getFullYear() + 1);
+      break;
   }
   return date.toISOString().slice(0, 10);
 }

@@ -33,6 +33,8 @@ const RECURRENCE_LABELS: Record<RecurrenceFrequency, string> = {
   biweekly: "Biweekly",
   monthly: "Monthly",
   quarterly: "Quarterly",
+  semiannually: "Every 6 Months",
+  yearly: "Yearly",
 };
 
 export default function BacklogPage() {
