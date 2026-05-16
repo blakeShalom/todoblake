@@ -9,6 +9,7 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { getFirebaseDb } from "./config";
 import { SlotType, TodoItem, DailyTask, RecurrenceFrequency } from "@/lib/types";
@@ -133,6 +134,19 @@ export async function updateTodoItem(
       updatedAt: serverTimestamp(),
     });
   }
+}
+
+export async function updateTodoItemOrder(uid: string, orderedIds: string[]) {
+  const db = getFirebaseDb();
+  const batch = writeBatch(db);
+  orderedIds.forEach((id, index) => {
+    const docRef = doc(db, "users", uid, "todoItems", id);
+    batch.update(docRef, {
+      priorityOrder: index,
+      updatedAt: serverTimestamp(),
+    });
+  });
+  await batch.commit();
 }
 
 export function getNextScheduledDate(fromDate: string, frequency: RecurrenceFrequency): string {

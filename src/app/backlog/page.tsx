@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Plus, ArrowUp, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   addTodoItem,
   updateTodoItem,
   deleteTodoItem,
+  updateTodoItemOrder,
 } from "@/lib/firebase/firestore";
 import { TodoItem as TodoItemType, SlotType, RecurrenceFrequency } from "@/lib/types";
 
@@ -44,6 +45,9 @@ export default function BacklogPage() {
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showScheduled, setShowScheduled] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const dragOverRef = useRef<string | null>(null);
 
   const filtered = items.filter((item) => {
     if (filter === "active") return !item.completed;
@@ -62,6 +66,72 @@ export default function BacklogPage() {
 
   function clearSelection() {
     setSelected(new Set());
+  }
+
+  async function handleReorder(sourceId: string, targetId: string) {
+    if (!user || sourceId === targetId) {
+      setDraggingId(null);
+      setDragOverId(null);
+      dragOverRef.current = null;
+      return;
+    }
+
+    const fromIndex = filtered.findIndex((item) => item.id === sourceId);
+    const toIndex = filtered.findIndex((item) => item.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) {
+      setDraggingId(null);
+      setDragOverId(null);
+      dragOverRef.current = null;
+      return;
+    }
+
+    const reordered = [...filtered];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    await updateTodoItemOrder(
+      user.uid,
+      reordered.map((item) => item.id)
+    );
+    setDraggingId(null);
+    setDragOverId(null);
+    dragOverRef.current = null;
+  }
+
+  function handleReorderStart(
+    id: string,
+    event: React.PointerEvent<HTMLButtonElement>
+  ) {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDraggingId(id);
+    setDragOverId(null);
+    dragOverRef.current = null;
+
+    function handlePointerMove(moveEvent: PointerEvent) {
+      const target = document
+        .elementFromPoint(moveEvent.clientX, moveEvent.clientY)
+        ?.closest<HTMLElement>("[data-todo-item-id]");
+      const targetId = target?.dataset.todoItemId ?? null;
+      const nextDragOverId = targetId && targetId !== id ? targetId : null;
+      dragOverRef.current = nextDragOverId;
+      setDragOverId(nextDragOverId);
+    }
+
+    function handlePointerUp() {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      const targetId = dragOverRef.current;
+      if (targetId) {
+        handleReorder(id, targetId);
+      } else {
+        setDraggingId(null);
+        setDragOverId(null);
+        dragOverRef.current = null;
+      }
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp, { once: true });
   }
 
   async function handlePromoteSelected(slot: PromoteSlot) {
@@ -214,6 +284,10 @@ export default function BacklogPage() {
                   onEdit={setEditItem}
                   selected={selected.has(item.id)}
                   onSelect={toggleSelect}
+                  draggableItem
+                  dragging={draggingId === item.id}
+                  dragOver={dragOverId === item.id && draggingId !== item.id}
+                  onReorderStart={handleReorderStart}
                 />
               ))}
               {filtered.length === 0 && (

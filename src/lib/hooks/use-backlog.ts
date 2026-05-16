@@ -8,6 +8,25 @@ import { getFirebaseDb } from "@/lib/firebase/config";
 import { scheduledQuery } from "@/lib/firebase/firestore";
 import { TodoItem } from "@/lib/types";
 
+function backlogPriorityBucket(item: TodoItem) {
+  if (item.completed) return 2;
+  if (item.recurrence) return 0;
+  return 1;
+}
+
+function backlogRank(item: TodoItem) {
+  if (typeof item.priorityOrder === "number") return item.priorityOrder;
+  return 500000 + backlogPriorityBucket(item) * 500000 + item.sortOrder;
+}
+
+function compareBacklogItems(a: TodoItem, b: TodoItem) {
+  const bucketDiff = Number(a.completed) - Number(b.completed);
+  if (bucketDiff !== 0) return bucketDiff;
+  const sortDiff = backlogRank(a) - backlogRank(b);
+  if (sortDiff !== 0) return sortDiff;
+  return a.title.localeCompare(b.title);
+}
+
 export function useBacklog() {
   const { user } = useAuth();
   const [unscheduledItems, setUnscheduledItems] = useState<TodoItem[]>([]);
@@ -90,5 +109,5 @@ export function useBacklog() {
     }
   }
 
-  return { items, scheduled, loading };
+  return { items: items.sort(compareBacklogItems), scheduled, loading };
 }

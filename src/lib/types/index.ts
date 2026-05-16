@@ -15,6 +15,7 @@ export interface TodoItem {
   completed: boolean;
   completedAt: Timestamp | null;
   sortOrder: number;
+  priorityOrder?: number | null;
   recurrence: RecurrenceFrequency | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
