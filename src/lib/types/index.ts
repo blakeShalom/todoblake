@@ -2,7 +2,7 @@ import { Timestamp } from "firebase/firestore";
 
 export type SlotType = "essential" | "priority" | "outcome" | "backlog";
 
-export type RecurrenceFrequency = "daily" | "weekly" | "biweekly" | "monthly" | "quarterly";
+export type RecurrenceFrequency = "daily" | "weekly" | "biweekly" | "monthly" | "quarterly" | "semiannually" | "yearly";
 
 export interface TodoItem {
   id: string;
@@ -15,6 +15,7 @@ export interface TodoItem {
   completed: boolean;
   completedAt: Timestamp | null;
   sortOrder: number;
+  priorityOrder?: number | null;
   recurrence: RecurrenceFrequency | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -44,6 +45,11 @@ export interface UserProfile {
   photoURL: string | null;
   createdAt: Timestamp;
   lastLoginAt: Timestamp;
+}
+
+export interface SyncState {
+  fromCache: boolean;
+  hasPendingWrites: boolean;
 }
 
 export const SLOT_LIMITS: Record<Exclude<SlotType, "backlog">, number> = {

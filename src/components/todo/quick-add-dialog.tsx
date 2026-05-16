@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,8 @@ const RECURRENCE_OPTIONS: { value: RecurrenceFrequency | "none"; label: string }
   { value: "biweekly", label: "Biweekly" },
   { value: "monthly", label: "Monthly" },
   { value: "quarterly", label: "Quarterly" },
+  { value: "semiannually", label: "Every 6 Months" },
+  { value: "yearly", label: "Yearly" },
 ];
 
 type Destination = SlotType | "daily";
@@ -54,8 +56,9 @@ export function QuickAddDialog() {
   const [destination, setDestination] = useState<Destination>(() => getDefaultDestination(pathname));
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  const openDialog = useCallback(() => {
     setDestination(getDefaultDestination(pathname));
+    setOpen(true);
   }, [pathname]);
 
   useEffect(() => {
@@ -71,12 +74,12 @@ export function QuickAddDialog() {
         !(e.target as HTMLElement)?.isContentEditable
       ) {
         e.preventDefault();
-        setOpen(true);
+        openDialog();
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [openDialog]);
 
   useEffect(() => {
     if (open) {
@@ -122,7 +125,7 @@ export function QuickAddDialog() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); } setOpen(v); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (v) { openDialog(); } else { reset(); setOpen(false); } }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Quick Add</DialogTitle>

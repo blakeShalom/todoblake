@@ -23,12 +23,14 @@ import {
 } from "@/lib/firebase/firestore";
 import { DailyTask } from "@/lib/types";
 import { DailyTaskItem } from "@/components/todo/daily-task-item";
+import { SyncIndicator } from "@/components/sync/sync-indicator";
 import { format } from "date-fns";
 
 export default function DailyTasksPage() {
   const today = new Date();
   const dateStr = format(today, "yyyy-MM-dd");
-  const { tasks, loading, isCompleted, getCompletionId } = useDailyTasks(today);
+  const { tasks, loading, syncState, isCompleted, getCompletionId } =
+    useDailyTasks(today);
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editTask, setEditTask] = useState<DailyTask | null>(null);
@@ -84,14 +86,17 @@ export default function DailyTasksPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Daily Tasks</h1>
-            <Button
-              size="sm"
-              className="gap-1"
-              onClick={() => setShowForm(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Add
-            </Button>
+            <div className="flex items-center gap-2">
+              <SyncIndicator syncState={syncState} />
+              <Button
+                size="sm"
+                className="gap-1"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Add
+              </Button>
+            </div>
           </div>
 
           <p className="text-sm text-muted-foreground">

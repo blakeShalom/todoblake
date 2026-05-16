@@ -19,6 +19,8 @@ const RECURRENCE_OPTIONS: { value: RecurrenceFrequency | "none"; label: string }
   { value: "biweekly", label: "Biweekly" },
   { value: "monthly", label: "Monthly" },
   { value: "quarterly", label: "Quarterly" },
+  { value: "semiannually", label: "Every 6 Months" },
+  { value: "yearly", label: "Yearly" },
 ];
 
 interface TodoItemFormProps {
