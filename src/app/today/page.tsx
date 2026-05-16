@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/components/auth/protected-route";
 import { AppShell } from "@/components/layout/app-shell";
 import { SlotSection } from "@/components/todo/slot-section";
 import { DailyTaskItem } from "@/components/todo/daily-task-item";
+import { SyncIndicator } from "@/components/sync/sync-indicator";
 import { useTodayItems } from "@/lib/hooks/use-today-items";
 import { useDailyTasks } from "@/lib/hooks/use-daily-tasks";
 import { useUpcomingDeadlines } from "@/lib/hooks/use-upcoming-deadlines";
@@ -37,19 +38,43 @@ function DeadlineItem({ item }: { item: TodoItem }) {
 
 export default function TodayPage() {
   const today = new Date();
-  const { getSlotItems, loading } = useTodayItems(today);
-  const { tasks, isCompleted, getCompletionId, loading: tasksLoading } = useDailyTasks(today);
-  const { next7Days, next8to30Days, loading: deadlinesLoading } = useUpcomingDeadlines();
+  const { getSlotItems, loading, syncState } = useTodayItems(today);
+  const {
+    tasks,
+    isCompleted,
+    getCompletionId,
+    loading: tasksLoading,
+    syncState: tasksSyncState,
+  } = useDailyTasks(today);
+  const {
+    next7Days,
+    next8to30Days,
+    loading: deadlinesLoading,
+    syncState: deadlinesSyncState,
+  } = useUpcomingDeadlines();
   const { user } = useAuth();
   const dateStr = format(today, "yyyy-MM-dd");
+  const pageSyncState = {
+    fromCache:
+      syncState.fromCache ||
+      tasksSyncState.fromCache ||
+      deadlinesSyncState.fromCache,
+    hasPendingWrites:
+      syncState.hasPendingWrites ||
+      tasksSyncState.hasPendingWrites ||
+      deadlinesSyncState.hasPendingWrites,
+  };
 
   return (
     <ProtectedRoute>
       <AppShell>
         <div className="space-y-8">
-          <h1 className="text-2xl font-bold">
-            {format(today, "EEEE, MMMM d")}
-          </h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold">
+              {format(today, "EEEE, MMMM d")}
+            </h1>
+            <SyncIndicator syncState={pageSyncState} />
+          </div>
 
           {loading ? (
             <div className="flex justify-center py-12">

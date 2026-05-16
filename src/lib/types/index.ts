@@ -47,6 +47,11 @@ export interface UserProfile {
   lastLoginAt: Timestamp;
 }
 
+export interface SyncState {
+  fromCache: boolean;
+  hasPendingWrites: boolean;
+}
+
 export const SLOT_LIMITS: Record<Exclude<SlotType, "backlog">, number> = {
   essential: 1,
   priority: 2,

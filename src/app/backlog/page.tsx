@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/auth/protected-route";
 import { AppShell } from "@/components/layout/app-shell";
 import { TodoItem } from "@/components/todo/todo-item";
 import { TodoItemForm } from "@/components/todo/todo-item-form";
+import { SyncIndicator } from "@/components/sync/sync-indicator";
 import { useBacklog } from "@/lib/hooks/use-backlog";
 import { useAuth } from "@/components/auth/auth-provider";
 import {
@@ -38,7 +39,7 @@ const RECURRENCE_LABELS: Record<RecurrenceFrequency, string> = {
 };
 
 export default function BacklogPage() {
-  const { items, scheduled, loading } = useBacklog();
+  const { items, scheduled, loading, syncState } = useBacklog();
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<TodoItemType | null>(null);
@@ -208,6 +209,7 @@ export default function BacklogPage() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Backlog</h1>
             <div className="flex gap-2">
+              <SyncIndicator syncState={syncState} />
               <Button
                 size="sm"
                 variant="outline"

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { AppShell } from "@/components/layout/app-shell";
+import { SyncIndicator } from "@/components/sync/sync-indicator";
 import { useHistory, TimeFilter } from "@/lib/hooks/use-history";
 import { SlotType } from "@/lib/types";
 
@@ -37,7 +38,8 @@ const SLOT_FILTER_OPTIONS: { value: SlotFilter; label: string }[] = [
 export default function HistoryPage() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("24h");
   const [slotFilter, setSlotFilter] = useState<SlotFilter>("all");
-  const { items, dailyCompletions, loading } = useHistory(timeFilter);
+  const { items, dailyCompletions, loading, syncState } =
+    useHistory(timeFilter);
 
   const filtered = items.filter((item) => {
     if (slotFilter === "all") return true;
@@ -53,7 +55,10 @@ export default function HistoryPage() {
     <ProtectedRoute>
       <AppShell>
         <div className="space-y-6">
-          <h1 className="text-2xl font-bold">Completed</h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold">Completed</h1>
+            <SyncIndicator syncState={syncState} />
+          </div>
 
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">

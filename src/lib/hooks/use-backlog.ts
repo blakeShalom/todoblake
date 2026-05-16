@@ -6,7 +6,9 @@ import { format } from "date-fns";
 import { useAuth } from "@/components/auth/auth-provider";
 import { getFirebaseDb } from "@/lib/firebase/config";
 import { scheduledQuery } from "@/lib/firebase/firestore";
-import { TodoItem } from "@/lib/types";
+import { SyncState, TodoItem } from "@/lib/types";
+
+const SYNCED: SyncState = { fromCache: false, hasPendingWrites: false };
 
 function backlogPriorityBucket(item: TodoItem) {
   if (item.completed) return 2;
@@ -33,6 +35,11 @@ export function useBacklog() {
   const [dueItems, setDueItems] = useState<TodoItem[]>([]);
   const [scheduled, setScheduled] = useState<TodoItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unscheduledSyncState, setUnscheduledSyncState] =
+    useState<SyncState>(SYNCED);
+  const [dueSyncState, setDueSyncState] = useState<SyncState>(SYNCED);
+  const [scheduledSyncState, setScheduledSyncState] =
+    useState<SyncState>(SYNCED);
 
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -51,12 +58,16 @@ export function useBacklog() {
       orderBy("sortOrder", "asc")
     );
 
-    const unsub1 = onSnapshot(unscheduledQ, (snapshot) => {
+    const unsub1 = onSnapshot(unscheduledQ, { includeMetadataChanges: true }, (snapshot) => {
       const results: TodoItem[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as TodoItem[];
       setUnscheduledItems(results);
+      setUnscheduledSyncState({
+        fromCache: snapshot.metadata.fromCache,
+        hasPendingWrites: snapshot.metadata.hasPendingWrites,
+      });
       setLoading(false);
     });
 
@@ -69,12 +80,16 @@ export function useBacklog() {
       orderBy("sortOrder", "asc")
     );
 
-    const unsub2 = onSnapshot(dueQ, (snapshot) => {
+    const unsub2 = onSnapshot(dueQ, { includeMetadataChanges: true }, (snapshot) => {
       const results: TodoItem[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as TodoItem[];
       setDueItems(results);
+      setDueSyncState({
+        fromCache: snapshot.metadata.fromCache,
+        hasPendingWrites: snapshot.metadata.hasPendingWrites,
+      });
     });
 
     return () => {
@@ -88,12 +103,16 @@ export function useBacklog() {
     if (!user) return;
 
     const q = scheduledQuery(user.uid, today);
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
       const results: TodoItem[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as TodoItem[];
       setScheduled(results);
+      setScheduledSyncState({
+        fromCache: snapshot.metadata.fromCache,
+        hasPendingWrites: snapshot.metadata.hasPendingWrites,
+      });
     });
 
     return unsubscribe;
@@ -109,5 +128,16 @@ export function useBacklog() {
     }
   }
 
-  return { items: items.sort(compareBacklogItems), scheduled, loading };
+  const syncState: SyncState = {
+    fromCache:
+      unscheduledSyncState.fromCache ||
+      dueSyncState.fromCache ||
+      scheduledSyncState.fromCache,
+    hasPendingWrites:
+      unscheduledSyncState.hasPendingWrites ||
+      dueSyncState.hasPendingWrites ||
+      scheduledSyncState.hasPendingWrites,
+  };
+
+  return { items: items.sort(compareBacklogItems), scheduled, loading, syncState };
 }
