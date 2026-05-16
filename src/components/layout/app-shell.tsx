@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-dvh flex-col">
       {/* Top bar */}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
@@ -43,12 +43,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Main content */}
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6 pb-20">
+      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))]">
         {children}
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
         <div className="mx-auto flex h-16 max-w-2xl items-center justify-around px-4">
           {NAV_ITEMS.map((item) => {
             const active = pathname === item.href;
