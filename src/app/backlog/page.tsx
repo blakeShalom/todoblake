@@ -5,7 +5,6 @@ import { Plus, ArrowUp, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { AppShell } from "@/components/layout/app-shell";
 import { TodoItem } from "@/components/todo/todo-item";
@@ -100,6 +99,13 @@ export default function BacklogPage() {
     if (!user) return;
     const item = items.find((i) => i.id === id);
     await updateTodoItem(user.uid, id, { completed }, item);
+    if (completed) {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
   }
 
   async function handleDelete(id: string) {
@@ -200,23 +206,15 @@ export default function BacklogPage() {
           ) : (
             <div className="space-y-1.5">
               {filtered.map((item) => (
-                <div key={item.id} className="flex items-center gap-2">
-                  {!item.completed && (
-                    <Checkbox
-                      checked={selected.has(item.id)}
-                      onCheckedChange={() => toggleSelect(item.id)}
-                      className="shrink-0"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <TodoItem
-                      item={item}
-                      onToggle={handleToggle}
-                      onDelete={handleDelete}
-                      onEdit={setEditItem}
-                    />
-                  </div>
-                </div>
+                <TodoItem
+                  key={item.id}
+                  item={item}
+                  onToggle={handleToggle}
+                  onDelete={handleDelete}
+                  onEdit={setEditItem}
+                  selected={selected.has(item.id)}
+                  onSelect={toggleSelect}
+                />
               ))}
               {filtered.length === 0 && (
                 <p className="py-8 text-center text-muted-foreground">
