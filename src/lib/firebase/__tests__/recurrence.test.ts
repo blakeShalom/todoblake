@@ -42,4 +42,20 @@ describe("getNextScheduledDate", () => {
   it("handles quarterly across year boundary", () => {
     expect(getNextScheduledDate("2026-11-15", "quarterly")).toBe("2027-02-15");
   });
+
+  it("advances semiannually by 6 months", () => {
+    expect(getNextScheduledDate("2026-05-15", "semiannually")).toBe("2026-11-15");
+  });
+
+  it("handles semiannually across year boundary", () => {
+    expect(getNextScheduledDate("2026-09-15", "semiannually")).toBe("2027-03-15");
+  });
+
+  it("advances yearly by 1 year", () => {
+    expect(getNextScheduledDate("2026-05-15", "yearly")).toBe("2027-05-15");
+  });
+
+  it("handles yearly on leap day", () => {
+    expect(getNextScheduledDate("2024-02-29", "yearly")).toBe("2025-03-01");
+  });
 });

@@ -9,6 +9,7 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { getFirebaseDb } from "./config";
 import { SlotType, TodoItem, DailyTask, RecurrenceFrequency } from "@/lib/types";
@@ -135,6 +136,19 @@ export async function updateTodoItem(
   }
 }
 
+export async function updateTodoItemOrder(uid: string, orderedIds: string[]) {
+  const db = getFirebaseDb();
+  const batch = writeBatch(db);
+  orderedIds.forEach((id, index) => {
+    const docRef = doc(db, "users", uid, "todoItems", id);
+    batch.update(docRef, {
+      priorityOrder: index,
+      updatedAt: serverTimestamp(),
+    });
+  });
+  await batch.commit();
+}
+
 export function getNextScheduledDate(fromDate: string, frequency: RecurrenceFrequency): string {
   const date = new Date(fromDate + "T00:00:00");
   switch (frequency) {
@@ -152,6 +166,12 @@ export function getNextScheduledDate(fromDate: string, frequency: RecurrenceFreq
       break;
     case "quarterly":
       date.setMonth(date.getMonth() + 3);
+      break;
+    case "semiannually":
+      date.setMonth(date.getMonth() + 6);
+      break;
+    case "yearly":
+      date.setFullYear(date.getFullYear() + 1);
       break;
   }
   return date.toISOString().slice(0, 10);
