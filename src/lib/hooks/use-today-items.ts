@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/components/auth/auth-provider";
-import { todayItemsQuery } from "@/lib/firebase/firestore";
+import {
+  returnUnfinishedTodayItemsToBacklog,
+  todayItemsQuery,
+} from "@/lib/firebase/firestore";
 import { TodoItem, SlotType, SyncState } from "@/lib/types";
 import { format } from "date-fns";
 
@@ -19,6 +22,10 @@ export function useTodayItems(date?: Date) {
 
   useEffect(() => {
     if (!user) return;
+
+    returnUnfinishedTodayItemsToBacklog(user.uid, dateStr).catch((error) => {
+      console.error("Failed to return stale today items to backlog", error);
+    });
 
     const q = todayItemsQuery(user.uid, dateStr);
     const unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {

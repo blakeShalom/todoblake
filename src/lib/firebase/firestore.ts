@@ -4,6 +4,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDocs,
   query,
   where,
   orderBy,
@@ -13,6 +14,9 @@ import {
 } from "firebase/firestore";
 import { getFirebaseDb } from "./config";
 import { SlotType, TodoItem, DailyTask, RecurrenceFrequency } from "@/lib/types";
+
+const TODAY_SLOTS: SlotType[] = ["essential", "priority", "outcome"];
+const FIRESTORE_BATCH_LIMIT = 500;
 
 function todoItemsCollection(uid: string) {
   return collection(getFirebaseDb(), "users", uid, "todoItems");
@@ -31,6 +35,23 @@ export function todayItemsQuery(uid: string, date: string) {
     todoItemsCollection(uid),
     where("assignedDate", "==", date),
     orderBy("sortOrder", "asc")
+  );
+}
+
+export function staleAssignedItemsQuery(uid: string, date: string) {
+  return query(
+    todoItemsCollection(uid),
+    where("assignedDate", "<", date),
+    orderBy("assignedDate", "asc")
+  );
+}
+
+export function shouldReturnToBacklog(item: TodoItem, today: string) {
+  return (
+    TODAY_SLOTS.includes(item.slot) &&
+    !item.completed &&
+    item.assignedDate !== null &&
+    item.assignedDate < today
   );
 }
 
@@ -147,6 +168,37 @@ export async function updateTodoItemOrder(uid: string, orderedIds: string[]) {
     });
   });
   await batch.commit();
+}
+
+export async function returnUnfinishedTodayItemsToBacklog(
+  uid: string,
+  today: string
+) {
+  const snapshot = await getDocs(staleAssignedItemsQuery(uid, today));
+  const staleItems = snapshot.docs.filter((docSnap) =>
+    shouldReturnToBacklog({
+      id: docSnap.id,
+      ...docSnap.data(),
+    } as TodoItem, today)
+  );
+
+  for (let start = 0; start < staleItems.length; start += FIRESTORE_BATCH_LIMIT) {
+    const batch = writeBatch(getFirebaseDb());
+    staleItems
+      .slice(start, start + FIRESTORE_BATCH_LIMIT)
+      .forEach((docSnap, index) => {
+        batch.update(docSnap.ref, {
+          slot: "backlog",
+          assignedDate: null,
+          priorityOrder: null,
+          sortOrder: Date.now() + start + index,
+          updatedAt: serverTimestamp(),
+        });
+      });
+    await batch.commit();
+  }
+
+  return staleItems.length;
 }
 
 export function getNextScheduledDate(fromDate: string, frequency: RecurrenceFrequency): string {

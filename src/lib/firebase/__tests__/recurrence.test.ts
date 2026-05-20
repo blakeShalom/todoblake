@@ -1,5 +1,25 @@
 import { describe, it, expect } from "vitest";
-import { getNextScheduledDate } from "../firestore";
+import { getNextScheduledDate, shouldReturnToBacklog } from "../firestore";
+import { TodoItem } from "@/lib/types";
+
+function todoItem(overrides: Partial<TodoItem>): TodoItem {
+  return {
+    id: "item-1",
+    title: "Test item",
+    description: "",
+    slot: "essential",
+    assignedDate: "2026-05-19",
+    scheduledDate: null,
+    deadline: null,
+    completed: false,
+    completedAt: null,
+    sortOrder: 0,
+    recurrence: null,
+    createdAt: null as never,
+    updatedAt: null as never,
+    ...overrides,
+  };
+}
 
 describe("getNextScheduledDate", () => {
   it("advances daily by 1 day", () => {
@@ -57,5 +77,25 @@ describe("getNextScheduledDate", () => {
 
   it("handles yearly on leap day", () => {
     expect(getNextScheduledDate("2024-02-29", "yearly")).toBe("2025-03-01");
+  });
+});
+
+describe("shouldReturnToBacklog", () => {
+  it("returns unfinished older 1-2-3 items to backlog", () => {
+    expect(shouldReturnToBacklog(todoItem({ slot: "essential" }), "2026-05-20")).toBe(true);
+    expect(shouldReturnToBacklog(todoItem({ slot: "priority" }), "2026-05-20")).toBe(true);
+    expect(shouldReturnToBacklog(todoItem({ slot: "outcome" }), "2026-05-20")).toBe(true);
+  });
+
+  it("leaves completed, current-day, and backlog items alone", () => {
+    expect(
+      shouldReturnToBacklog(todoItem({ completed: true }), "2026-05-20")
+    ).toBe(false);
+    expect(
+      shouldReturnToBacklog(todoItem({ assignedDate: "2026-05-20" }), "2026-05-20")
+    ).toBe(false);
+    expect(
+      shouldReturnToBacklog(todoItem({ slot: "backlog" }), "2026-05-20")
+    ).toBe(false);
   });
 });
