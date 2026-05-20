@@ -88,16 +88,17 @@ export function TodoItemForm({
             {initialData ? "Edit Item" : "Add Item"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+        <form onSubmit={handleSubmit} className="min-w-0 space-y-4">
+          <div className="min-w-0">
             <Input
               placeholder="What needs to be done?"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              className="overflow-hidden text-ellipsis"
               autoFocus
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <Textarea
               placeholder="Description (optional)"
               value={description}
@@ -129,18 +130,18 @@ export function TodoItemForm({
                   className="mt-1"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="text-sm font-medium text-muted-foreground">
                   Recurrence
                 </label>
-                <div className="mt-1 flex flex-wrap gap-1.5">
+                <div className="mt-1 grid min-w-0 grid-cols-2 gap-1.5 min-[380px]:grid-cols-3">
                   {RECURRENCE_OPTIONS.map((opt) => (
                     <Button
                       key={opt.value}
                       type="button"
                       variant={recurrence === opt.value ? "default" : "outline"}
                       size="sm"
-                      className="text-xs"
+                      className="h-auto min-h-7 w-full min-w-0 px-2 py-1 text-xs whitespace-normal"
                       onClick={() => setRecurrence(opt.value)}
                     >
                       {opt.label}
@@ -150,11 +151,11 @@ export function TodoItemForm({
               </div>
             </>
           )}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!title.trim()}>
+            <Button type="submit" className="w-full sm:w-auto" disabled={!title.trim()}>
               {initialData ? "Save" : "Add"}
             </Button>
           </div>
