@@ -46,6 +46,7 @@ npx tsc --noEmit   # Type-check without building
 | `/backlog` | All backlog items + selection/promote + scheduled view | Yes |
 | `/daily-tasks` | Manage recurring daily habits | Yes |
 | `/history` | Completed items with time + slot filters | Yes |
+| `/dev/ui` | Auth-free local UI playground with mock todo states | No |
 
 ### Data Flow Pattern
 
@@ -208,6 +209,28 @@ Tip: Firestore logs missing index errors in the browser console with a direct li
 - **Quick Add**: Press `c` from any page to open fast task creation dialog; defaults to current page's context
 - **PWA**: Installable on mobile via "Add to Home Screen", works offline for cached pages
 - **Responsive**: Mobile bottom tab nav + desktop sidebar
+
+## UI Testing Without Auth
+
+Use `/dev/ui` for repeatable visual checks when a Google session is not available. It is an auth-free client route with mock data for todo rows, daily tasks, sync states, completed/history rows, and the add/edit item dialog.
+
+Recommended workflow:
+
+```bash
+npm run dev
+```
+
+Then open `http://localhost:3000/dev/ui`.
+
+For mobile/PWA overflow checks, use a narrow viewport such as 390x844 and click **Long form**. Verify:
+
+- Long unbroken titles stay inside the input/modal instead of widening the page
+- Recurrence options stay inside the modal grid
+- Cancel/Add or Cancel/Save actions stay visible inside the modal
+- Todo rows with long titles, badges, drag handles, and completed state do not overflow horizontally
+- Sync states render as Synced, Updating, and Saving
+
+The route intentionally does not use Firebase, `ProtectedRoute`, or `AppShell`, so it can be used even when auth/local env is unavailable. It renders an unavailable message in production builds.
 
 ## Conventions
 

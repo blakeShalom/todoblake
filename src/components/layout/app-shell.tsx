@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { CalendarCheck, List, RotateCcw, CheckCircle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -29,9 +30,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
           <div className="flex items-center gap-2">
             {user?.photoURL && (
-              <img
+              <Image
                 src={user.photoURL}
                 alt=""
+                width={28}
+                height={28}
                 className="h-7 w-7 rounded-full"
               />
             )}

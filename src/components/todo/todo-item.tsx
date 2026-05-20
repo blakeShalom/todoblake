@@ -59,7 +59,7 @@ export function TodoItem({
 
   return (
     <div
-      className={`group flex flex-col rounded-lg border p-3 transition-colors ${
+      className={`group flex min-w-0 flex-col rounded-lg border p-3 transition-colors ${
         selected
           ? "border-primary bg-primary/5 ring-2 ring-primary/20"
           : dragOver
@@ -75,7 +75,7 @@ export function TodoItem({
       onClick={handleSelect}
       onKeyDown={handleKeyDown}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         {draggableItem && (
           <Button
             type="button"
@@ -97,60 +97,68 @@ export function TodoItem({
           onClick={(e) => e.stopPropagation()}
           onCheckedChange={(checked) => onToggle(item.id, checked as boolean)}
         />
-        <span
-          className={`flex-1 text-sm ${item.completed ? "text-muted-foreground line-through" : ""}`}
-        >
-          {item.title}
-        </span>
-        {item.recurrence && (
-          <Badge variant="outline" className="gap-1 text-xs">
-            <Repeat className="h-3 w-3" />
-            {item.recurrence}
-          </Badge>
-        )}
-        {item.deadline && (
-          <Badge variant={deadlineBadgeVariant()} className="text-xs">
-            {format(new Date(item.deadline + "T00:00:00"), "MMM d")}
-          </Badge>
-        )}
-        {item.description && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={(e) => {
-              e.stopPropagation();
-              setExpanded(!expanded);
-            }}
-          >
-            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 opacity-0 group-hover:opacity-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(item);
-          }}
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(item.id);
-          }}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span
+              className={`min-w-40 flex-1 break-words text-sm [overflow-wrap:anywhere] ${item.completed ? "text-muted-foreground line-through" : ""}`}
+            >
+              {item.title}
+            </span>
+            {item.recurrence && (
+              <Badge variant="outline" className="shrink-0 gap-1 text-xs">
+                <Repeat className="h-3 w-3" />
+                {item.recurrence}
+              </Badge>
+            )}
+            {item.deadline && (
+              <Badge variant={deadlineBadgeVariant()} className="shrink-0 text-xs">
+                {format(new Date(item.deadline + "T00:00:00"), "MMM d")}
+              </Badge>
+            )}
+            {item.description && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpanded(!expanded);
+                }}
+              >
+                {expanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(item);
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 text-destructive opacity-0 group-hover:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(item.id);
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
       </div>
       {expanded && item.description && (
-        <p className="mt-2 pl-9 text-sm text-muted-foreground whitespace-pre-wrap">
+        <p className="mt-2 min-w-0 break-words pl-9 text-sm text-muted-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
           {item.description}
         </p>
       )}
