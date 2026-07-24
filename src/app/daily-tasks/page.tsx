@@ -116,7 +116,7 @@ export default function DailyTasksPage() {
                   completed={isCompleted(task.id)}
                   onToggle={() => {
                     if (!user) return;
-                    toggleDailyTaskCompletion(
+                    return toggleDailyTaskCompletion(
                       user.uid,
                       task.id,
                       dateStr,
