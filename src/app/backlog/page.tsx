@@ -43,7 +43,7 @@ export default function BacklogPage() {
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<TodoItemType | null>(null);
-  const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "completed">("active");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showScheduled, setShowScheduled] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
