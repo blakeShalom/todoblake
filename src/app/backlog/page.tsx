@@ -43,7 +43,7 @@ export default function BacklogPage() {
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<TodoItemType | null>(null);
-  const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "completed">("active");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showScheduled, setShowScheduled] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -151,6 +151,8 @@ export default function BacklogPage() {
     deadline: string | null;
     scheduledDate: string | null;
     recurrence: RecurrenceFrequency | null;
+    notifyOnDeadline: boolean;
+    notifyOnScheduledDate: boolean;
     slot: SlotType;
   }) {
     if (!user) return;
@@ -162,6 +164,8 @@ export default function BacklogPage() {
       scheduledDate: data.scheduledDate,
       deadline: data.deadline,
       recurrence: data.recurrence,
+      notifyOnDeadline: data.notifyOnDeadline,
+      notifyOnScheduledDate: data.notifyOnScheduledDate,
       sortOrder: items.length,
     });
   }
@@ -190,6 +194,8 @@ export default function BacklogPage() {
     deadline: string | null;
     scheduledDate: string | null;
     recurrence: RecurrenceFrequency | null;
+    notifyOnDeadline: boolean;
+    notifyOnScheduledDate: boolean;
   }) {
     if (!user || !editItem) return;
     await updateTodoItem(user.uid, editItem.id, {
@@ -198,6 +204,8 @@ export default function BacklogPage() {
       deadline: data.deadline,
       scheduledDate: data.scheduledDate,
       recurrence: data.recurrence,
+      notifyOnDeadline: data.notifyOnDeadline,
+      notifyOnScheduledDate: data.notifyOnScheduledDate,
     });
     setEditItem(null);
   }
@@ -349,6 +357,8 @@ export default function BacklogPage() {
                 deadline: editItem.deadline,
                 scheduledDate: editItem.scheduledDate,
                 recurrence: editItem.recurrence,
+                notifyOnDeadline: editItem.notifyOnDeadline,
+                notifyOnScheduledDate: editItem.notifyOnScheduledDate,
               }}
             />
           )}

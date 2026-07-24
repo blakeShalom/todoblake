@@ -13,6 +13,8 @@ function todoItem(overrides: Partial<TodoItem>): TodoItem {
     deadline: null,
     completed: false,
     completedAt: null,
+    notifyOnDeadline: false,
+    notifyOnScheduledDate: false,
     sortOrder: 0,
     recurrence: null,
     createdAt: null as never,

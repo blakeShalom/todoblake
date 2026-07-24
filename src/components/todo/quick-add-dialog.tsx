@@ -53,6 +53,8 @@ export function QuickAddDialog() {
   const [deadline, setDeadline] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
   const [recurrence, setRecurrence] = useState<RecurrenceFrequency | "none">("none");
+  const [notifyOnDeadline, setNotifyOnDeadline] = useState(false);
+  const [notifyOnScheduledDate, setNotifyOnScheduledDate] = useState(false);
   const [destination, setDestination] = useState<Destination>(() => getDefaultDestination(pathname));
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -93,6 +95,8 @@ export function QuickAddDialog() {
     setDeadline("");
     setScheduledDate("");
     setRecurrence("none");
+    setNotifyOnDeadline(false);
+    setNotifyOnScheduledDate(false);
     setDestination(getDefaultDestination(pathname));
   }
 
@@ -116,6 +120,8 @@ export function QuickAddDialog() {
         scheduledDate: destination === "backlog" ? (scheduledDate || null) : null,
         deadline: deadline || null,
         recurrence: destination === "backlog" ? (recurrence === "none" ? null : recurrence) : null,
+        notifyOnDeadline,
+        notifyOnScheduledDate: destination === "backlog" ? notifyOnScheduledDate : false,
         sortOrder: Date.now(),
       });
     }
@@ -171,6 +177,15 @@ export function QuickAddDialog() {
                 onChange={(e) => setDeadline(e.target.value)}
                 className="mt-1"
               />
+              <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={notifyOnDeadline}
+                  onChange={(e) => setNotifyOnDeadline(e.target.checked)}
+                  className="h-4 w-4 accent-primary"
+                />
+                Notify on deadline
+              </label>
             </div>
           )}
           {destination === "backlog" && (
@@ -182,10 +197,19 @@ export function QuickAddDialog() {
                 <Input
                   type="date"
                   value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  className="mt-1"
+                onChange={(e) => setScheduledDate(e.target.value)}
+                className="mt-1"
+              />
+              <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={notifyOnScheduledDate}
+                  onChange={(e) => setNotifyOnScheduledDate(e.target.checked)}
+                  className="h-4 w-4 accent-primary"
                 />
-              </div>
+                Notify when scheduled
+              </label>
+            </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
                   Recurrence
