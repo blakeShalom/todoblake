@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-provider";
 import { signOut } from "@/lib/firebase/auth";
 import { QuickAddDialog } from "@/components/todo/quick-add-dialog";
+import { NotificationSettingsDialog } from "@/components/pwa/notification-settings-dialog";
 
 const NAV_ITEMS = [
   { href: "/today", label: "Today", icon: CalendarCheck },
@@ -29,6 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             TodoBlake
           </Link>
           <div className="flex items-center gap-2">
+            <NotificationSettingsDialog />
             {user?.photoURL && (
               <Image
                 src={user.photoURL}

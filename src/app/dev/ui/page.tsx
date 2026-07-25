@@ -38,6 +38,11 @@ function mockTodo(overrides: Partial<TodoItemType>): TodoItemType {
     deadline: null,
     completed: false,
     completedAt: null,
+    notifyOnDeadline: false,
+    notifyOnScheduledDate: false,
+    lastNotificationSentFor: null,
+    lastNotificationSentAt: null,
+    notificationCompletedAt: null,
     sortOrder: 0,
     recurrence: null,
     createdAt: now,
@@ -127,6 +132,8 @@ export default function DevUiPage() {
     deadline: string | null;
     scheduledDate: string | null;
     recurrence: RecurrenceFrequency | null;
+    notifyOnDeadline: boolean;
+    notifyOnScheduledDate: boolean;
     slot: SlotType;
   }) {
     setLastSubmit(
@@ -136,6 +143,8 @@ export default function DevUiPage() {
           deadline: data.deadline,
           scheduledDate: data.scheduledDate,
           recurrence: data.recurrence,
+          notifyOnDeadline: data.notifyOnDeadline,
+          notifyOnScheduledDate: data.notifyOnScheduledDate,
           slot: data.slot,
         },
         null,
@@ -297,6 +306,8 @@ export default function DevUiPage() {
           deadline: "2026-05-24",
           scheduledDate: "2026-06-01",
           recurrence: "quarterly",
+          notifyOnDeadline: true,
+          notifyOnScheduledDate: true,
         }}
       />
     </main>

@@ -32,6 +32,8 @@ interface TodoItemFormProps {
     deadline: string | null;
     scheduledDate: string | null;
     recurrence: RecurrenceFrequency | null;
+    notifyOnDeadline: boolean;
+    notifyOnScheduledDate: boolean;
     slot: SlotType;
   }) => void;
   defaultSlot?: SlotType;
@@ -42,6 +44,8 @@ interface TodoItemFormProps {
     deadline: string | null;
     scheduledDate?: string | null;
     recurrence?: RecurrenceFrequency | null;
+    notifyOnDeadline?: boolean;
+    notifyOnScheduledDate?: boolean;
   };
 }
 
@@ -60,6 +64,12 @@ export function TodoItemForm({
   const [recurrence, setRecurrence] = useState<RecurrenceFrequency | "none">(
     initialData?.recurrence || "none"
   );
+  const [notifyOnDeadline, setNotifyOnDeadline] = useState(
+    initialData?.notifyOnDeadline ?? false
+  );
+  const [notifyOnScheduledDate, setNotifyOnScheduledDate] = useState(
+    initialData?.notifyOnScheduledDate ?? false
+  );
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,6 +80,8 @@ export function TodoItemForm({
       deadline: deadline || null,
       scheduledDate: scheduledDate || null,
       recurrence: recurrence === "none" ? null : recurrence,
+      notifyOnDeadline,
+      notifyOnScheduledDate,
       slot: defaultSlot,
     });
     setTitle("");
@@ -77,6 +89,8 @@ export function TodoItemForm({
     setDeadline("");
     setScheduledDate("");
     setRecurrence("none");
+    setNotifyOnDeadline(false);
+    setNotifyOnScheduledDate(false);
     onClose();
   }
 
@@ -116,6 +130,15 @@ export function TodoItemForm({
               onChange={(e) => setDeadline(e.target.value)}
               className="mt-1"
             />
+            <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={notifyOnDeadline}
+                onChange={(e) => setNotifyOnDeadline(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              Notify on deadline
+            </label>
           </div>
           {showScheduling && (
             <>
@@ -129,6 +152,15 @@ export function TodoItemForm({
                   onChange={(e) => setScheduledDate(e.target.value)}
                   className="mt-1"
                 />
+                <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={notifyOnScheduledDate}
+                    onChange={(e) => setNotifyOnScheduledDate(e.target.checked)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  Notify when scheduled
+                </label>
               </div>
               <div className="min-w-0">
                 <label className="text-sm font-medium text-muted-foreground">
