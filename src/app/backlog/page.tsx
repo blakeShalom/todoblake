@@ -63,12 +63,14 @@ export default function BacklogPage() {
   >(new Map());
 
   const filtered = items.filter((item) => {
-    if (filter === "active") return !item.completed;
+    if (filter === "active") {
+      return !item.completed || recentlyCompleted.has(item.id);
+    }
     if (filter === "completed") return item.completed;
     return true;
   });
   const visibleItems =
-    filter === "all"
+    filter === "all" || filter === "active"
       ? preserveRecentlyCompletedOrder(
           filtered,
           recentlyCompleted,
@@ -101,9 +103,11 @@ export default function BacklogPage() {
   }
 
   function holdCompletedItemInPlace(id: string) {
-    if (filter !== "all") return;
+    if (filter !== "all" && filter !== "active") return;
 
-    setCompletionHoldOrder(new Map(visibleItems.map((item, index) => [item.id, index])));
+    setCompletionHoldOrder(
+      new Map(visibleItems.map((item, index) => [item.id, index]))
+    );
     setRecentlyCompleted((prev) => {
       const next = new Set(prev);
       next.add(id);
