@@ -36,6 +36,29 @@ describe("preserveRecentlyCompletedOrder", () => {
     expect(result.map((item) => item.id)).toEqual(["a", "b", "c"]);
   });
 
+  it("keeps a later completed item in its original row position", () => {
+    const items = [
+      todo("a", false),
+      todo("b", false),
+      todo("d", false),
+      todo("e", false),
+      todo("c", true),
+    ];
+    const result = preserveRecentlyCompletedOrder(
+      items,
+      new Set(["c"]),
+      new Map([
+        ["a", 0],
+        ["b", 1],
+        ["c", 2],
+        ["d", 3],
+        ["e", 4],
+      ])
+    );
+
+    expect(result.map((item) => item.id)).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
   it("preserves completed-last ordering when no hold is active", () => {
     const items = [todo("a", false), todo("c", false), todo("b", true)];
     const result = preserveRecentlyCompletedOrder(items, new Set(), new Map());

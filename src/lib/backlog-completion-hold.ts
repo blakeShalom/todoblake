@@ -7,15 +7,23 @@ export function preserveRecentlyCompletedOrder(
 ) {
   if (recentlyCompleted.size === 0) return items;
 
-  return [...items].sort((a, b) => {
-    const aHeld = a.completed && recentlyCompleted.has(a.id);
-    const bHeld = b.completed && recentlyCompleted.has(b.id);
-    if (!aHeld && !bHeld) return 0;
+  const heldItems = items
+    .filter((item) => item.completed && recentlyCompleted.has(item.id))
+    .map((item) => ({ item, previousIndex: previousOrder.get(item.id) }))
+    .filter(
+      (held): held is { item: TodoItem; previousIndex: number } =>
+        held.previousIndex !== undefined
+    )
+    .sort((a, b) => a.previousIndex - b.previousIndex);
 
-    const aOrder = previousOrder.get(a.id);
-    const bOrder = previousOrder.get(b.id);
-    if (aOrder === undefined || bOrder === undefined) return 0;
+  if (heldItems.length === 0) return items;
 
-    return aOrder - bOrder;
-  });
+  const heldIds = new Set(heldItems.map(({ item }) => item.id));
+  const reordered = items.filter((item) => !heldIds.has(item.id));
+
+  for (const { item, previousIndex } of heldItems) {
+    reordered.splice(Math.min(previousIndex, reordered.length), 0, item);
+  }
+
+  return reordered;
 }
