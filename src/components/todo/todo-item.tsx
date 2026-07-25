@@ -10,7 +10,7 @@ import { format, isPast, isToday } from "date-fns";
 
 interface TodoItemProps {
   item: TodoItemType;
-  onToggle: (id: string, completed: boolean) => void;
+  onToggle: (id: string, completed: boolean) => void | Promise<void>;
   onDelete: (id: string) => void;
   onEdit: (item: TodoItemType) => void;
   selected?: boolean;
@@ -37,7 +37,17 @@ export function TodoItem({
   onReorderStart,
 }: TodoItemProps) {
   const [expanded, setExpanded] = useState(false);
-  const selectable = !!onSelect && !item.completed;
+  const [lastCompletedProp, setLastCompletedProp] = useState(item.completed);
+  const [optimisticCompleted, setOptimisticCompleted] = useState<
+    boolean | null
+  >(null);
+  const [togglePending, setTogglePending] = useState(false);
+  if (item.completed !== lastCompletedProp) {
+    setLastCompletedProp(item.completed);
+    setOptimisticCompleted(null);
+  }
+  const visualCompleted = optimisticCompleted ?? item.completed;
+  const selectable = !!onSelect && !visualCompleted;
 
   function deadlineBadgeVariant(): "destructive" | "secondary" | "outline" {
     if (!item.deadline) return "outline";
@@ -57,16 +67,34 @@ export function TodoItem({
     onSelect(item.id);
   }
 
+  async function handleToggle(checked: boolean) {
+    if (togglePending || checked === visualCompleted) return;
+
+    const previous = visualCompleted;
+    setOptimisticCompleted(checked);
+    setTogglePending(true);
+    try {
+      await onToggle(item.id, checked);
+    } catch (error) {
+      console.error("Failed to toggle todo item", error);
+      setOptimisticCompleted(previous === item.completed ? null : previous);
+    } finally {
+      setTogglePending(false);
+    }
+  }
+
   return (
     <div
-      className={`group flex min-w-0 flex-col rounded-lg border p-3 transition-colors ${
+      className={`group flex min-w-0 flex-col rounded-lg border p-3 transition-all duration-200 ease-out ${
         selected
           ? "border-primary bg-primary/5 ring-2 ring-primary/20"
           : dragOver
             ? "border-primary/60 bg-primary/5"
             : dragging
               ? "border-primary/40 opacity-60"
-              : "hover:bg-muted/50"
+              : visualCompleted
+                ? "bg-muted/30 text-muted-foreground hover:bg-muted/40"
+                : "hover:bg-muted/50"
       } ${selectable ? "cursor-pointer" : ""}`}
       role={selectable ? "button" : undefined}
       tabIndex={selectable ? 0 : undefined}
@@ -93,14 +121,15 @@ export function TodoItem({
           </Button>
         )}
         <Checkbox
-          checked={item.completed}
+          checked={visualCompleted}
+          disabled={togglePending}
           onClick={(e) => e.stopPropagation()}
-          onCheckedChange={(checked) => onToggle(item.id, checked as boolean)}
+          onCheckedChange={(checked) => handleToggle(checked === true)}
         />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <span
-              className={`min-w-40 flex-1 break-words text-sm [overflow-wrap:anywhere] ${item.completed ? "text-muted-foreground line-through" : ""}`}
+              className={`min-w-40 flex-1 break-words text-sm transition-all duration-200 ease-out [overflow-wrap:anywhere] ${visualCompleted ? "text-muted-foreground line-through decoration-muted-foreground/70" : ""}`}
             >
               {item.title}
             </span>

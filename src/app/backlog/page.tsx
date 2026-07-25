@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, ArrowUp, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
   updateTodoItemOrder,
 } from "@/lib/firebase/firestore";
 import { TodoItem as TodoItemType, SlotType, RecurrenceFrequency } from "@/lib/types";
+import { preserveRecentlyCompletedOrder } from "@/lib/backlog-completion-hold";
 
 type PromoteSlot = "essential" | "priority" | "outcome";
 
@@ -38,6 +39,8 @@ const RECURRENCE_LABELS: Record<RecurrenceFrequency, string> = {
   yearly: "Yearly",
 };
 
+const COMPLETION_HOLD_MS = 450;
+
 export default function BacklogPage() {
   const { items, scheduled, loading, syncState } = useBacklog();
   const { user } = useAuth();
@@ -48,13 +51,76 @@ export default function BacklogPage() {
   const [showScheduled, setShowScheduled] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [recentlyCompleted, setRecentlyCompleted] = useState<Set<string>>(
+    new Set()
+  );
+  const [completionHoldOrder, setCompletionHoldOrder] = useState<
+    Map<string, number>
+  >(new Map());
   const dragOverRef = useRef<string | null>(null);
+  const completionHoldTimers = useRef<
+    Map<string, ReturnType<typeof setTimeout>>
+  >(new Map());
 
   const filtered = items.filter((item) => {
-    if (filter === "active") return !item.completed;
+    if (filter === "active") {
+      return !item.completed || recentlyCompleted.has(item.id);
+    }
     if (filter === "completed") return item.completed;
     return true;
   });
+  const visibleItems =
+    filter === "all" || filter === "active"
+      ? preserveRecentlyCompletedOrder(
+          filtered,
+          recentlyCompleted,
+          completionHoldOrder
+        )
+      : filtered;
+
+  useEffect(() => {
+    const timers = completionHoldTimers.current;
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
+    };
+  }, []);
+
+  function clearCompletionHold(id: string) {
+    const timer = completionHoldTimers.current.get(id);
+    if (timer) clearTimeout(timer);
+    completionHoldTimers.current.delete(id);
+    setRecentlyCompleted((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setCompletionHoldOrder((prev) => {
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  function holdCompletedItemInPlace(id: string) {
+    if (filter !== "all" && filter !== "active") return;
+
+    setCompletionHoldOrder(
+      new Map(visibleItems.map((item, index) => [item.id, index]))
+    );
+    setRecentlyCompleted((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+
+    const previousTimer = completionHoldTimers.current.get(id);
+    if (previousTimer) clearTimeout(previousTimer);
+    completionHoldTimers.current.set(
+      id,
+      setTimeout(() => clearCompletionHold(id), COMPLETION_HOLD_MS)
+    );
+  }
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -77,8 +143,8 @@ export default function BacklogPage() {
       return;
     }
 
-    const fromIndex = filtered.findIndex((item) => item.id === sourceId);
-    const toIndex = filtered.findIndex((item) => item.id === targetId);
+    const fromIndex = visibleItems.findIndex((item) => item.id === sourceId);
+    const toIndex = visibleItems.findIndex((item) => item.id === targetId);
     if (fromIndex === -1 || toIndex === -1) {
       setDraggingId(null);
       setDragOverId(null);
@@ -86,7 +152,7 @@ export default function BacklogPage() {
       return;
     }
 
-    const reordered = [...filtered];
+    const reordered = [...visibleItems];
     const [moved] = reordered.splice(fromIndex, 1);
     reordered.splice(toIndex, 0, moved);
     await updateTodoItemOrder(
@@ -173,13 +239,21 @@ export default function BacklogPage() {
   async function handleToggle(id: string, completed: boolean) {
     if (!user) return;
     const item = items.find((i) => i.id === id);
-    await updateTodoItem(user.uid, id, { completed }, item);
-    if (completed) {
-      setSelected((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+    if (completed) holdCompletedItemInPlace(id);
+    try {
+      await updateTodoItem(user.uid, id, { completed }, item);
+      if (completed) {
+        setSelected((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      } else {
+        clearCompletionHold(id);
+      }
+    } catch (error) {
+      if (completed) clearCompletionHold(id);
+      throw error;
     }
   }
 
@@ -285,7 +359,7 @@ export default function BacklogPage() {
             </div>
           ) : (
             <div className="space-y-1.5">
-              {filtered.map((item) => (
+              {visibleItems.map((item) => (
                 <TodoItem
                   key={item.id}
                   item={item}
@@ -300,7 +374,7 @@ export default function BacklogPage() {
                   onReorderStart={handleReorderStart}
                 />
               ))}
-              {filtered.length === 0 && (
+              {visibleItems.length === 0 && (
                 <p className="py-8 text-center text-muted-foreground">
                   {filter === "all"
                     ? "No items in backlog"
