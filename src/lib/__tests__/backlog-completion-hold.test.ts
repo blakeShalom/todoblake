@@ -13,6 +13,8 @@ function todo(id: string, completed: boolean): TodoItem {
     deadline: null,
     completed,
     completedAt: null,
+    notifyOnDeadline: false,
+    notifyOnScheduledDate: false,
     recurrence: null,
     sortOrder: 0,
     createdAt: null as unknown as TodoItem["createdAt"],

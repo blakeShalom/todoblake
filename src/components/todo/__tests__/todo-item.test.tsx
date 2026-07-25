@@ -14,6 +14,8 @@ function item(overrides: Partial<TodoItemType> = {}): TodoItemType {
     deadline: null,
     completed: false,
     completedAt: null,
+    notifyOnDeadline: false,
+    notifyOnScheduledDate: false,
     recurrence: null,
     sortOrder: 0,
     createdAt: null as unknown as TodoItemType["createdAt"],
