@@ -177,12 +177,29 @@ All data scoped under `users/{uid}/`:
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isApproved(uid) {
+      return request.auth != null
+        && request.auth.uid == uid
+        && exists(/databases/$(database)/documents/access/$(uid));
+    }
+
+    match /access/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+
     match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if isApproved(uid);
     }
   }
 }
 ```
+
+The deployed source of truth is `firestore.rules`. Access is fail-closed:
+administrators must create `access/{uid}` documents through the Firebase console
+or a trusted Admin SDK environment. Never change this to permit every
+authenticated user; that would let arbitrary Google accounts consume project
+resources.
 
 ## Firestore Composite Indexes Required
 

@@ -23,6 +23,26 @@ const db = getFirestore();
 const DEFAULT_REGION = "us-central1";
 const ACTION_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
 const ACTION_SECRET = defineSecret("NOTIFICATION_ACTION_SECRET");
+const DEVICE_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+
+async function assertApprovedUid(uid: string) {
+  const access = await db.doc(`access/${uid}`).get();
+  if (!access.exists) throw new Error("This account is not approved for this app");
+}
+
+function boundedString(
+  value: unknown,
+  name: string,
+  maxLength: number,
+  required = false
+) {
+  if (typeof value !== "string" || (required && value.length === 0)) {
+    if (required) throw new Error(`Missing ${name}`);
+    return "";
+  }
+  if (value.length > maxLength) throw new Error(`${name} is too long`);
+  return value;
+}
 
 function cors(response: {
   set: (name: string, value: string) => void;
@@ -73,20 +93,22 @@ export const registerNotificationDevice = onRequest(
 
     try {
       const uid = await uidFromRequest(request);
+      await assertApprovedUid(uid);
       const { deviceId, token, userAgent, timezone } = request.body || {};
-      if (!deviceId || !token) {
-        response.status(400).send("Missing deviceId or token");
-        return;
-      }
+      const safeDeviceId = boundedString(deviceId, "deviceId", 128, true);
+      const safeToken = boundedString(token, "token", 4096, true);
+      const safeUserAgent = boundedString(userAgent, "userAgent", 512);
+      const safeTimezone = boundedString(timezone, "timezone", 100) || "UTC";
+      if (!DEVICE_ID_PATTERN.test(safeDeviceId)) throw new Error("Invalid deviceId");
 
       await db.doc(`users/${uid}/notificationPreferences/default`).set(
         {
           enabled: true,
           dailyTime: "09:00",
-          timezone: timezone || "UTC",
-          [`devices.${deviceId}`]: {
-            token,
-            userAgent: userAgent || "",
+          timezone: safeTimezone,
+          [`devices.${safeDeviceId}`]: {
+            token: safeToken,
+            userAgent: safeUserAgent,
             createdAt: FieldValue.serverTimestamp(),
             lastSeenAt: FieldValue.serverTimestamp(),
           },
@@ -118,15 +140,14 @@ export const unregisterNotificationDevice = onRequest(
 
     try {
       const uid = await uidFromRequest(request);
+      await assertApprovedUid(uid);
       const { deviceId } = request.body || {};
-      if (!deviceId) {
-        response.status(400).send("Missing deviceId");
-        return;
-      }
+      const safeDeviceId = boundedString(deviceId, "deviceId", 128, true);
+      if (!DEVICE_ID_PATTERN.test(safeDeviceId)) throw new Error("Invalid deviceId");
 
       await db.doc(`users/${uid}/notificationPreferences/default`).set(
         {
-          [`devices.${deviceId}`]: FieldValue.delete(),
+          [`devices.${safeDeviceId}`]: FieldValue.delete(),
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
@@ -154,7 +175,11 @@ export const completeTaskFromNotification = onRequest(
 
     try {
       const { token } = request.body || {};
-      const payload = verifyActionToken(token, actionSecret());
+      const payload = verifyActionToken(
+        boundedString(token, "token", 4096, true),
+        actionSecret()
+      );
+      await assertApprovedUid(payload.uid);
       const itemRef = db.doc(`users/${payload.uid}/todoItems/${payload.taskId}`);
       const itemSnap = await itemRef.get();
       if (!itemSnap.exists) {
@@ -212,7 +237,9 @@ export const sendDueTaskNotifications = onSchedule(
   },
   async () => {
     const now = new Date();
-    const usersSnap = await db.collection("users").get();
+    // Iterate the small, administrator-managed allowlist rather than every
+    // account that has ever authenticated.
+    const usersSnap = await db.collection("access").get();
 
     for (const userDoc of usersSnap.docs) {
       const uid = userDoc.id;
