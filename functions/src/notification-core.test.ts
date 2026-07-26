@@ -124,6 +124,20 @@ describe("shouldRunForPreference", () => {
       })
     ).toBe(false);
   });
+
+  it("supports a wider scheduler window to tolerate delayed invocations", () => {
+    expect(
+      shouldRunForPreference(
+        new Date("2026-07-24T14:20:00.000Z"),
+        {
+          enabled: true,
+          dailyTime: "09:00",
+          timezone: "America/Chicago",
+        },
+        30
+      )
+    ).toBe(true);
+  });
 });
 
 describe("notification action tokens", () => {
