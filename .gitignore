@@ -36,6 +36,12 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Firebase CLI project selection is local to each deployer.
+.firebaserc
+firebase-debug.log*
+*-firebase-adminsdk-*.json
+service-account*.json
+
 
 # vercel
 .vercel

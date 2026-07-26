@@ -1,0 +1,55 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "todoItems",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assignedDate", "order": "ASCENDING" },
+        { "fieldPath": "sortOrder", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "todoItems",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "slot", "order": "ASCENDING" },
+        { "fieldPath": "scheduledDate", "order": "ASCENDING" },
+        { "fieldPath": "sortOrder", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "todoItems",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "slot", "order": "ASCENDING" },
+        { "fieldPath": "scheduledDate", "order": "ASCENDING" },
+        { "fieldPath": "completed", "order": "ASCENDING" },
+        { "fieldPath": "sortOrder", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "todoItems",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "completed", "order": "ASCENDING" },
+        { "fieldPath": "completedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "todoItems",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "completed", "order": "ASCENDING" },
+        { "fieldPath": "deadline", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dailyTaskCompletions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "completedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
