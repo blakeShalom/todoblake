@@ -177,6 +177,93 @@ export const unregisterNotificationDevice = onRequest(
   }
 );
 
+export const sendTestNotification = onRequest(
+  { region: DEFAULT_REGION },
+  async (request, response) => {
+    cors(response);
+    if (request.method === "OPTIONS") {
+      response.status(204).send("");
+      return;
+    }
+    if (request.method !== "POST") {
+      response.status(405).send("Method not allowed");
+      return;
+    }
+
+    try {
+      const uid = await uidFromRequest(request);
+      await assertApprovedUid(uid);
+      const prefRef = db.doc(`users/${uid}/notificationPreferences/default`);
+      const prefSnap = await prefRef.get();
+      const preferences = (prefSnap.data() || {}) as NotificationPreferences;
+      const deviceEntries = Object.entries(preferences.devices || {}).filter(
+        ([, device]) => Boolean(device?.token)
+      );
+
+      logger.info("Sending test notification", {
+        uid,
+        enabled: preferences.enabled ?? false,
+        deviceCount: deviceEntries.length,
+      });
+
+      if (deviceEntries.length === 0) {
+        response.status(400).send("No registered notification devices.");
+        return;
+      }
+
+      const results = await Promise.allSettled(
+        deviceEntries.map(async ([deviceId, device]) => {
+          try {
+            await getMessaging().send({
+              token: device.token!,
+              webpush: {
+                notification: {
+                  title: "TodoBlake test",
+                  body: "Push notifications are working.",
+                  icon: "/icons/icon-192x192.png",
+                },
+              },
+              data: {
+                title: "TodoBlake test",
+                body: "Push notifications are working.",
+                openUrl: "/today",
+              },
+            });
+            logger.info("Sent test notification", { uid, deviceId });
+          } catch (error) {
+            logger.warn("Failed to send test notification", {
+              uid,
+              deviceId,
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Unknown FCM send error",
+            });
+            await prefRef.update({
+              [`devices.${deviceId}`]: FieldValue.delete(),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+            throw error;
+          }
+        })
+      );
+
+      const sentCount = results.filter((result) => result.status === "fulfilled").length;
+      if (sentCount === 0) {
+        response.status(502).send("No registered devices accepted the test notification.");
+        return;
+      }
+
+      response.json({ ok: true, sentCount });
+    } catch (error) {
+      logger.warn("Failed to send test notification", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      response.status(401).send(error instanceof Error ? error.message : "Unauthorized");
+    }
+  }
+);
+
 export const completeTaskFromNotification = onRequest(
   { region: DEFAULT_REGION, secrets: [ACTION_SECRET] },
   async (request, response) => {
