@@ -2,6 +2,7 @@ import { initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import { getMessaging } from "firebase-admin/messaging";
+import { logger } from "firebase-functions";
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { onSchedule } from "firebase-functions/v2/scheduler";
@@ -118,8 +119,17 @@ export const registerNotificationDevice = onRequest(
         { merge: true }
       );
 
+      logger.info("Registered notification device", {
+        uid,
+        deviceId: safeDeviceId,
+        timezone: safeTimezone,
+        userAgentLength: safeUserAgent.length,
+      });
       response.json({ ok: true });
     } catch (error) {
+      logger.warn("Failed to register notification device", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
       response.status(401).send(error instanceof Error ? error.message : "Unauthorized");
     }
   }
@@ -153,8 +163,15 @@ export const unregisterNotificationDevice = onRequest(
         { merge: true }
       );
 
+      logger.info("Unregistered notification device", {
+        uid,
+        deviceId: safeDeviceId,
+      });
       response.json({ ok: true });
     } catch (error) {
+      logger.warn("Failed to unregister notification device", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
       response.status(401).send(error instanceof Error ? error.message : "Unauthorized");
     }
   }
@@ -240,20 +257,43 @@ export const sendDueTaskNotifications = onSchedule(
     // Iterate the small, administrator-managed allowlist rather than every
     // account that has ever authenticated.
     const usersSnap = await db.collection("access").get();
+    logger.info("Starting due task notification sweep", {
+      accessUserCount: usersSnap.size,
+      now: now.toISOString(),
+    });
 
     for (const userDoc of usersSnap.docs) {
       const uid = userDoc.id;
       const prefRef = db.doc(`users/${uid}/notificationPreferences/default`);
       const prefSnap = await prefRef.get();
       const preferences = (prefSnap.data() || {}) as NotificationPreferences;
-      if (!shouldRunForPreference(now, preferences)) continue;
+      const timezone = preferences.timezone || "UTC";
+      const localNow = localDateTimeParts(now, timezone);
+      const shouldRun = shouldRunForPreference(now, preferences, 30);
 
       const deviceEntries = Object.entries(preferences.devices || {}).filter(
         ([, device]) => Boolean(device?.token)
       );
-      if (deviceEntries.length === 0) continue;
+      logger.info("Evaluating notification user", {
+        uid,
+        enabled: preferences.enabled ?? false,
+        dailyTime: preferences.dailyTime || "09:00",
+        timezone,
+        localDate: localNow.date,
+        localMinutes: localNow.minutes,
+        shouldRun,
+        deviceCount: deviceEntries.length,
+      });
 
-      const today = localDateTimeParts(now, preferences.timezone || "UTC").date;
+      if (!shouldRun) continue;
+      if (deviceEntries.length === 0) {
+        logger.info("Skipping notification user with no registered devices", {
+          uid,
+        });
+        continue;
+      }
+
+      const today = localNow.date;
       const itemsSnap = await db
         .collection(`users/${uid}/todoItems`)
         .where("completed", "==", false)
@@ -262,6 +302,17 @@ export const sendDueTaskNotifications = onSchedule(
         itemsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as DueTask),
         today
       );
+      logger.info("Resolved due task notifications", {
+        uid,
+        activeTaskCount: itemsSnap.size,
+        dueNotificationCount: notifications.length,
+        dueTasks: notifications.map((notification) => ({
+          taskId: notification.item.id,
+          reasons: notification.reasons,
+          deadline: notification.item.deadline || null,
+          scheduledDate: notification.item.scheduledDate || null,
+        })),
+      });
 
       for (const notification of notifications) {
         const openUrl =
@@ -306,7 +357,22 @@ export const sendDueTaskNotifications = onSchedule(
                   openUrl,
                 },
               });
+              logger.info("Sent due task notification", {
+                uid,
+                deviceId,
+                taskId: notification.item.id,
+                reasons: notification.reasons,
+              });
             } catch (error) {
+              logger.warn("Failed to send due task notification", {
+                uid,
+                deviceId,
+                taskId: notification.item.id,
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Unknown FCM send error",
+              });
               await prefRef.update({
                 [`devices.${deviceId}`]: FieldValue.delete(),
                 updatedAt: FieldValue.serverTimestamp(),
@@ -325,6 +391,17 @@ export const sendDueTaskNotifications = onSchedule(
             },
             lastNotificationSentAt: Timestamp.now(),
             updatedAt: FieldValue.serverTimestamp(),
+          });
+          logger.info("Marked due task notification as sent", {
+            uid,
+            taskId: notification.item.id,
+            sentUpdate,
+          });
+        } else {
+          logger.warn("No devices accepted due task notification", {
+            uid,
+            taskId: notification.item.id,
+            reasons: notification.reasons,
           });
         }
       }
