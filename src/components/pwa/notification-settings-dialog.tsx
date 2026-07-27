@@ -99,6 +99,7 @@ export function NotificationSettingsDialog() {
     setError(null);
     setMessage(null);
     try {
+      await registerNotificationDevice(user);
       await sendTestNotification(user);
       setMessage("Test notification sent.");
     } catch (err) {
