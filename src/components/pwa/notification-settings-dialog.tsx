@@ -17,6 +17,7 @@ import {
   getDefaultNotificationPreferences,
   getNotificationPermission,
   registerNotificationDevice,
+  sendTestNotification,
   subscribeToNotificationPreferences,
   unregisterNotificationDevice,
 } from "@/lib/firebase/notifications";
@@ -32,7 +33,9 @@ export function NotificationSettingsDialog() {
   const [dailyTime, setDailyTime] = useState("09:00");
   const [timezone, setTimezone] = useState("UTC");
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     browserSupportsPushNotifications().then(setSupported);
@@ -51,6 +54,7 @@ export function NotificationSettingsDialog() {
     if (!user) return;
     setSaving(true);
     setError(null);
+    setMessage(null);
     try {
       const defaults = getDefaultNotificationPreferences();
       await registerNotificationDevice(user);
@@ -72,6 +76,7 @@ export function NotificationSettingsDialog() {
     if (!user) return;
     setSaving(true);
     setError(null);
+    setMessage(null);
     try {
       await unregisterNotificationDevice(user);
       await saveNotificationPreferences(user.uid, {
@@ -85,6 +90,22 @@ export function NotificationSettingsDialog() {
       setError(err instanceof Error ? err.message : "Could not disable notifications.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function testNotifications() {
+    if (!user) return;
+    setTesting(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await registerNotificationDevice(user);
+      await sendTestNotification(user);
+      setMessage("Test notification sent.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send test notification.");
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -147,16 +168,23 @@ export function NotificationSettingsDialog() {
               </p>
             )}
             {error && <p className="text-sm text-destructive">{error}</p>}
+            {message && <p className="text-sm text-muted-foreground">{message}</p>}
 
             <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Close
               </Button>
               {enabled ? (
-                <Button type="button" variant="destructive" onClick={disableNotifications} disabled={saving}>
-                  {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Disable
-                </Button>
+                <>
+                  <Button type="button" variant="outline" onClick={testNotifications} disabled={testing || saving}>
+                    {testing && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Test
+                  </Button>
+                  <Button type="button" variant="destructive" onClick={disableNotifications} disabled={saving || testing}>
+                    {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Disable
+                  </Button>
+                </>
               ) : (
                 <Button type="button" onClick={enableNotifications} disabled={!supported || saving}>
                   {saving && <Loader2 className="h-4 w-4 animate-spin" />}
