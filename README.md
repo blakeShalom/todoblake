@@ -83,6 +83,13 @@ npm --prefix functions test
 firebase deploy --only functions
 ```
 
+The GitHub Actions workflow in `.github/workflows/firebase-functions.yml`
+automatically deploys Functions on pushes to `main` when `functions/**` or
+`firebase.json` changes. To enable it for your own deployment, add repository
+secrets named `FIREBASE_PROJECT_ID` and `FIREBASE_SERVICE_ACCOUNT_JSON` for a
+Firebase service account that can deploy Cloud Functions. Forks should use their
+own Firebase project and service account, never secrets from another deployment.
+
 If notifications are not needed, do not deploy Functions and leave the VAPID
 and Functions variables empty. This avoids their recurring cloud cost entirely.
 
