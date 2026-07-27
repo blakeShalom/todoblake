@@ -75,7 +75,7 @@ function functionsBaseUrl() {
 }
 
 async function postToFunction(
-  name: "registerNotificationDevice" | "unregisterNotificationDevice",
+  name: "registerNotificationDevice" | "unregisterNotificationDevice" | "sendTestNotification",
   user: User,
   body: Record<string, unknown>
 ) {
@@ -132,4 +132,8 @@ export async function unregisterNotificationDevice(user: User) {
   await postToFunction("unregisterNotificationDevice", user, {
     deviceId: getDeviceId(),
   });
+}
+
+export async function sendTestNotification(user: User) {
+  await postToFunction("sendTestNotification", user, {});
 }

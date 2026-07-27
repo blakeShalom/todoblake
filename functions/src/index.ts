@@ -67,6 +67,21 @@ function actionSecret() {
   return secret;
 }
 
+function notificationDeviceEntries(preferences: NotificationPreferences) {
+  const entries = Object.entries(preferences.devices || {}).filter(([, device]) =>
+    Boolean(device?.token)
+  );
+  const legacyEntries = Object.entries(preferences as Record<string, unknown>)
+    .filter(([key, value]) => key.startsWith("devices.") && Boolean(value))
+    .map(([key, value]) => [
+      key.slice("devices.".length),
+      value as { token?: string; userAgent?: string },
+    ] as const)
+    .filter(([, device]) => Boolean(device?.token));
+
+  return [...entries, ...legacyEntries];
+}
+
 function completionUrl() {
   if (process.env.NOTIFICATION_COMPLETE_URL) return process.env.NOTIFICATION_COMPLETE_URL;
   const firebaseConfig = process.env.FIREBASE_CONFIG
@@ -107,11 +122,13 @@ export const registerNotificationDevice = onRequest(
           enabled: true,
           dailyTime: "09:00",
           timezone: safeTimezone,
-          [`devices.${safeDeviceId}`]: {
-            token: safeToken,
-            userAgent: safeUserAgent,
-            createdAt: FieldValue.serverTimestamp(),
-            lastSeenAt: FieldValue.serverTimestamp(),
+          devices: {
+            [safeDeviceId]: {
+              token: safeToken,
+              userAgent: safeUserAgent,
+              createdAt: FieldValue.serverTimestamp(),
+              lastSeenAt: FieldValue.serverTimestamp(),
+            },
           },
           updatedAt: FieldValue.serverTimestamp(),
           createdAt: FieldValue.serverTimestamp(),
@@ -170,6 +187,91 @@ export const unregisterNotificationDevice = onRequest(
       response.json({ ok: true });
     } catch (error) {
       logger.warn("Failed to unregister notification device", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      response.status(401).send(error instanceof Error ? error.message : "Unauthorized");
+    }
+  }
+);
+
+export const sendTestNotification = onRequest(
+  { region: DEFAULT_REGION },
+  async (request, response) => {
+    cors(response);
+    if (request.method === "OPTIONS") {
+      response.status(204).send("");
+      return;
+    }
+    if (request.method !== "POST") {
+      response.status(405).send("Method not allowed");
+      return;
+    }
+
+    try {
+      const uid = await uidFromRequest(request);
+      await assertApprovedUid(uid);
+      const prefRef = db.doc(`users/${uid}/notificationPreferences/default`);
+      const prefSnap = await prefRef.get();
+      const preferences = (prefSnap.data() || {}) as NotificationPreferences;
+      const deviceEntries = notificationDeviceEntries(preferences);
+
+      logger.info("Sending test notification", {
+        uid,
+        enabled: preferences.enabled ?? false,
+        deviceCount: deviceEntries.length,
+      });
+
+      if (deviceEntries.length === 0) {
+        response.status(400).send("No registered notification devices.");
+        return;
+      }
+
+      const results = await Promise.allSettled(
+        deviceEntries.map(async ([deviceId, device]) => {
+          try {
+            await getMessaging().send({
+              token: device.token!,
+              webpush: {
+                notification: {
+                  title: "TodoBlake test",
+                  body: "Push notifications are working.",
+                  icon: "/icons/icon-192x192.png",
+                },
+              },
+              data: {
+                title: "TodoBlake test",
+                body: "Push notifications are working.",
+                openUrl: "/today",
+              },
+            });
+            logger.info("Sent test notification", { uid, deviceId });
+          } catch (error) {
+            logger.warn("Failed to send test notification", {
+              uid,
+              deviceId,
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Unknown FCM send error",
+            });
+            await prefRef.update({
+              [`devices.${deviceId}`]: FieldValue.delete(),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+            throw error;
+          }
+        })
+      );
+
+      const sentCount = results.filter((result) => result.status === "fulfilled").length;
+      if (sentCount === 0) {
+        response.status(502).send("No registered devices accepted the test notification.");
+        return;
+      }
+
+      response.json({ ok: true, sentCount });
+    } catch (error) {
+      logger.warn("Failed to send test notification", {
         error: error instanceof Error ? error.message : "Unknown error",
       });
       response.status(401).send(error instanceof Error ? error.message : "Unauthorized");
@@ -271,9 +373,7 @@ export const sendDueTaskNotifications = onSchedule(
       const localNow = localDateTimeParts(now, timezone);
       const shouldRun = shouldRunForPreference(now, preferences, 30);
 
-      const deviceEntries = Object.entries(preferences.devices || {}).filter(
-        ([, device]) => Boolean(device?.token)
-      );
+      const deviceEntries = notificationDeviceEntries(preferences);
       logger.info("Evaluating notification user", {
         uid,
         enabled: preferences.enabled ?? false,
