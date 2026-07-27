@@ -67,6 +67,21 @@ function actionSecret() {
   return secret;
 }
 
+function notificationDeviceEntries(preferences: NotificationPreferences) {
+  const entries = Object.entries(preferences.devices || {}).filter(([, device]) =>
+    Boolean(device?.token)
+  );
+  const legacyEntries = Object.entries(preferences as Record<string, unknown>)
+    .filter(([key, value]) => key.startsWith("devices.") && Boolean(value))
+    .map(([key, value]) => [
+      key.slice("devices.".length),
+      value as { token?: string; userAgent?: string },
+    ] as const)
+    .filter(([, device]) => Boolean(device?.token));
+
+  return [...entries, ...legacyEntries];
+}
+
 function completionUrl() {
   if (process.env.NOTIFICATION_COMPLETE_URL) return process.env.NOTIFICATION_COMPLETE_URL;
   const firebaseConfig = process.env.FIREBASE_CONFIG
@@ -107,11 +122,13 @@ export const registerNotificationDevice = onRequest(
           enabled: true,
           dailyTime: "09:00",
           timezone: safeTimezone,
-          [`devices.${safeDeviceId}`]: {
-            token: safeToken,
-            userAgent: safeUserAgent,
-            createdAt: FieldValue.serverTimestamp(),
-            lastSeenAt: FieldValue.serverTimestamp(),
+          devices: {
+            [safeDeviceId]: {
+              token: safeToken,
+              userAgent: safeUserAgent,
+              createdAt: FieldValue.serverTimestamp(),
+              lastSeenAt: FieldValue.serverTimestamp(),
+            },
           },
           updatedAt: FieldValue.serverTimestamp(),
           createdAt: FieldValue.serverTimestamp(),
@@ -196,9 +213,7 @@ export const sendTestNotification = onRequest(
       const prefRef = db.doc(`users/${uid}/notificationPreferences/default`);
       const prefSnap = await prefRef.get();
       const preferences = (prefSnap.data() || {}) as NotificationPreferences;
-      const deviceEntries = Object.entries(preferences.devices || {}).filter(
-        ([, device]) => Boolean(device?.token)
-      );
+      const deviceEntries = notificationDeviceEntries(preferences);
 
       logger.info("Sending test notification", {
         uid,
@@ -358,9 +373,7 @@ export const sendDueTaskNotifications = onSchedule(
       const localNow = localDateTimeParts(now, timezone);
       const shouldRun = shouldRunForPreference(now, preferences, 30);
 
-      const deviceEntries = Object.entries(preferences.devices || {}).filter(
-        ([, device]) => Boolean(device?.token)
-      );
+      const deviceEntries = notificationDeviceEntries(preferences);
       logger.info("Evaluating notification user", {
         uid,
         enabled: preferences.enabled ?? false,
