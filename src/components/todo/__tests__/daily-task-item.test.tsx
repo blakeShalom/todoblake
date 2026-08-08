@@ -17,6 +17,30 @@ function task(overrides: Partial<DailyTask> = {}): DailyTask {
 }
 
 describe("DailyTaskItem", () => {
+  it("provides an accessible delete action", async () => {
+    const onDelete = vi.fn();
+    render(
+      <DailyTaskItem
+        task={task()}
+        completed={false}
+        onToggle={() => {}}
+        onDelete={onDelete}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete Drink water" }));
+
+    await waitFor(() => expect(onDelete).toHaveBeenCalledWith("daily-1"));
+  });
+
+  it("does not render management actions when they are not provided", () => {
+    render(
+      <DailyTaskItem task={task()} completed={false} onToggle={() => {}} />
+    );
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
   it("shows completed styling immediately while toggle is pending", () => {
     const onToggle = vi.fn(() => new Promise<void>(() => {}));
     render(

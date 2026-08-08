@@ -10,8 +10,8 @@ interface DailyTaskItemProps {
   task: DailyTask;
   completed: boolean;
   onToggle: () => void | Promise<void>;
-  onEdit: (task: DailyTask) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (task: DailyTask) => void;
+  onDelete?: (id: string) => void | Promise<void>;
 }
 
 export function DailyTaskItem({
@@ -26,6 +26,7 @@ export function DailyTaskItem({
     boolean | null
   >(null);
   const [togglePending, setTogglePending] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
   if (completed !== lastCompletedProp) {
     setLastCompletedProp(completed);
     setOptimisticCompleted(null);
@@ -48,6 +49,18 @@ export function DailyTaskItem({
     }
   }
 
+  async function handleDelete() {
+    if (!onDelete || deletePending) return;
+
+    setDeletePending(true);
+    try {
+      await onDelete(task.id);
+    } catch (error) {
+      console.error("Failed to delete daily task", error);
+      setDeletePending(false);
+    }
+  }
+
   return (
     <div
       className={`group flex items-center gap-3 rounded-lg border p-3 transition-all duration-200 ease-out ${
@@ -66,22 +79,29 @@ export function DailyTaskItem({
       >
         {task.title}
       </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7 opacity-0 group-hover:opacity-100"
-        onClick={() => onEdit(task)}
-      >
-        <Pencil className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100"
-        onClick={() => onDelete(task.id)}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
+      {onEdit && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          aria-label={`Edit ${task.title}`}
+          onClick={() => onEdit(task)}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      )}
+      {onDelete && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-destructive"
+          aria-label={`Delete ${task.title}`}
+          disabled={deletePending}
+          onClick={handleDelete}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      )}
     </div>
   );
 }

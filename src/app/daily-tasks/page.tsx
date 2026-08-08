@@ -62,9 +62,10 @@ export default function DailyTasksPage() {
     setDescription("");
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(task: DailyTask) {
     if (!user) return;
-    await deleteDailyTask(user.uid, id);
+    if (!window.confirm(`Delete "${task.title}"? This cannot be undone.`)) return;
+    await deleteDailyTask(user.uid, task.id);
   }
 
   function openEdit(task: DailyTask) {
@@ -124,7 +125,7 @@ export default function DailyTasksPage() {
                     );
                   }}
                   onEdit={openEdit}
-                  onDelete={handleDelete}
+                  onDelete={() => handleDelete(task)}
                 />
               ))}
               {tasks.length === 0 && (

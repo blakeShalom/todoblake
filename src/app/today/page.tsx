@@ -125,8 +125,6 @@ export default function TodayPage() {
                         getCompletionId(task.id)
                       );
                     }}
-                    onEdit={() => {}}
-                    onDelete={() => {}}
                   />
                 ))}
               </div>
