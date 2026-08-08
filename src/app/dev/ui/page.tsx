@@ -240,14 +240,12 @@ export default function DevUiPage() {
               completed={false}
               onToggle={() => {}}
               onEdit={() => {}}
-              onDelete={() => {}}
             />
             <DailyTaskItem
               task={dailyTasks[1]}
               completed
               onToggle={() => {}}
               onEdit={() => {}}
-              onDelete={() => {}}
             />
           </section>
 

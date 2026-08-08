@@ -17,6 +17,30 @@ function task(overrides: Partial<DailyTask> = {}): DailyTask {
 }
 
 describe("DailyTaskItem", () => {
+  it("provides an accessible edit action", () => {
+    const onEdit = vi.fn();
+    render(
+      <DailyTaskItem
+        task={task()}
+        completed={false}
+        onToggle={() => {}}
+        onEdit={onEdit}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit Drink water" }));
+
+    expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: "daily-1" }));
+  });
+
+  it("does not render management actions when they are not provided", () => {
+    render(
+      <DailyTaskItem task={task()} completed={false} onToggle={() => {}} />
+    );
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
   it("shows completed styling immediately while toggle is pending", () => {
     const onToggle = vi.fn(() => new Promise<void>(() => {}));
     render(
@@ -25,7 +49,6 @@ describe("DailyTaskItem", () => {
         completed={false}
         onToggle={onToggle}
         onEdit={() => {}}
-        onDelete={() => {}}
       />
     );
 
@@ -43,7 +66,6 @@ describe("DailyTaskItem", () => {
         completed={false}
         onToggle={onToggle}
         onEdit={() => {}}
-        onDelete={() => {}}
       />
     );
 
@@ -61,7 +83,6 @@ describe("DailyTaskItem", () => {
         completed={false}
         onToggle={() => {}}
         onEdit={() => {}}
-        onDelete={() => {}}
       />
     );
 
@@ -71,7 +92,6 @@ describe("DailyTaskItem", () => {
         completed
         onToggle={() => {}}
         onEdit={() => {}}
-        onDelete={() => {}}
       />
     );
 
