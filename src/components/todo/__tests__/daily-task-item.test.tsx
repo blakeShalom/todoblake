@@ -17,20 +17,20 @@ function task(overrides: Partial<DailyTask> = {}): DailyTask {
 }
 
 describe("DailyTaskItem", () => {
-  it("provides an accessible delete action", async () => {
-    const onDelete = vi.fn();
+  it("provides an accessible edit action", () => {
+    const onEdit = vi.fn();
     render(
       <DailyTaskItem
         task={task()}
         completed={false}
         onToggle={() => {}}
-        onDelete={onDelete}
+        onEdit={onEdit}
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete Drink water" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit Drink water" }));
 
-    await waitFor(() => expect(onDelete).toHaveBeenCalledWith("daily-1"));
+    expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: "daily-1" }));
   });
 
   it("does not render management actions when they are not provided", () => {
@@ -49,7 +49,6 @@ describe("DailyTaskItem", () => {
         completed={false}
         onToggle={onToggle}
         onEdit={() => {}}
-        onDelete={() => {}}
       />
     );
 
@@ -67,7 +66,6 @@ describe("DailyTaskItem", () => {
         completed={false}
         onToggle={onToggle}
         onEdit={() => {}}
-        onDelete={() => {}}
       />
     );
 
@@ -85,7 +83,6 @@ describe("DailyTaskItem", () => {
         completed={false}
         onToggle={() => {}}
         onEdit={() => {}}
-        onDelete={() => {}}
       />
     );
 
@@ -95,7 +92,6 @@ describe("DailyTaskItem", () => {
         completed
         onToggle={() => {}}
         onEdit={() => {}}
-        onDelete={() => {}}
       />
     );
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Trash2, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { DailyTask } from "@/lib/types";
 
 interface DailyTaskItemProps {
@@ -11,7 +11,6 @@ interface DailyTaskItemProps {
   completed: boolean;
   onToggle: () => void | Promise<void>;
   onEdit?: (task: DailyTask) => void;
-  onDelete?: (id: string) => void | Promise<void>;
 }
 
 export function DailyTaskItem({
@@ -19,14 +18,12 @@ export function DailyTaskItem({
   completed,
   onToggle,
   onEdit,
-  onDelete,
 }: DailyTaskItemProps) {
   const [lastCompletedProp, setLastCompletedProp] = useState(completed);
   const [optimisticCompleted, setOptimisticCompleted] = useState<
     boolean | null
   >(null);
   const [togglePending, setTogglePending] = useState(false);
-  const [deletePending, setDeletePending] = useState(false);
   if (completed !== lastCompletedProp) {
     setLastCompletedProp(completed);
     setOptimisticCompleted(null);
@@ -46,18 +43,6 @@ export function DailyTaskItem({
       setOptimisticCompleted(previous === completed ? null : previous);
     } finally {
       setTogglePending(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!onDelete || deletePending) return;
-
-    setDeletePending(true);
-    try {
-      await onDelete(task.id);
-    } catch (error) {
-      console.error("Failed to delete daily task", error);
-      setDeletePending(false);
     }
   }
 
@@ -83,23 +68,11 @@ export function DailyTaskItem({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="h-7 w-7 text-muted-foreground"
           aria-label={`Edit ${task.title}`}
           onClick={() => onEdit(task)}
         >
           <Pencil className="h-3.5 w-3.5" />
-        </Button>
-      )}
-      {onDelete && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-destructive"
-          aria-label={`Delete ${task.title}`}
-          disabled={deletePending}
-          onClick={handleDelete}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
         </Button>
       )}
     </div>

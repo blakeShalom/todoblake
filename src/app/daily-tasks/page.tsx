@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +36,7 @@ export default function DailyTasksPage() {
   const [editTask, setEditTask] = useState<DailyTask | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [deletePending, setDeletePending] = useState(false);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -62,10 +63,17 @@ export default function DailyTasksPage() {
     setDescription("");
   }
 
-  async function handleDelete(task: DailyTask) {
-    if (!user) return;
-    if (!window.confirm(`Delete "${task.title}"? This cannot be undone.`)) return;
-    await deleteDailyTask(user.uid, task.id);
+  async function handleDelete() {
+    if (!user || !editTask) return;
+    if (!window.confirm(`Delete "${editTask.title}"? This cannot be undone.`)) return;
+
+    setDeletePending(true);
+    try {
+      await deleteDailyTask(user.uid, editTask.id);
+      closeForm();
+    } finally {
+      setDeletePending(false);
+    }
   }
 
   function openEdit(task: DailyTask) {
@@ -125,7 +133,6 @@ export default function DailyTasksPage() {
                     );
                   }}
                   onEdit={openEdit}
-                  onDelete={() => handleDelete(task)}
                 />
               ))}
               {tasks.length === 0 && (
@@ -157,10 +164,22 @@ export default function DailyTasksPage() {
                   rows={2}
                 />
                 <div className="flex justify-end gap-2">
+                  {editTask && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="mr-auto gap-1.5"
+                      disabled={deletePending}
+                      onClick={handleDelete}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {deletePending ? "Deleting…" : "Delete"}
+                    </Button>
+                  )}
                   <Button type="button" variant="outline" onClick={closeForm}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={!title.trim()}>
+                  <Button type="submit" disabled={!title.trim() || deletePending}>
                     {editTask ? "Save" : "Add"}
                   </Button>
                 </div>
