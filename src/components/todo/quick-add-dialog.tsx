@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/components/auth/auth-provider";
-import { addTodoItem, addDailyTask } from "@/lib/firebase/firestore";
+import { addTodoItem, addDailyTask, addWeeklyTask } from "@/lib/firebase/firestore";
 import { SlotType, RecurrenceFrequency } from "@/lib/types";
 import { format } from "date-fns";
 
@@ -27,7 +27,7 @@ const RECURRENCE_OPTIONS: { value: RecurrenceFrequency | "none"; label: string }
   { value: "yearly", label: "Yearly" },
 ];
 
-type Destination = SlotType | "daily";
+type Destination = SlotType | "daily" | "weekly";
 
 const DESTINATION_OPTIONS: { value: Destination; label: string }[] = [
   { value: "essential", label: "Essential" },
@@ -35,12 +35,14 @@ const DESTINATION_OPTIONS: { value: Destination; label: string }[] = [
   { value: "outcome", label: "Outcome" },
   { value: "backlog", label: "Backlog" },
   { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
 ];
 
 function getDefaultDestination(pathname: string): Destination {
   if (pathname === "/today") return "outcome";
   if (pathname === "/backlog") return "backlog";
   if (pathname === "/daily-tasks") return "daily";
+  if (pathname === "/weekly-tasks") return "weekly";
   return "backlog";
 }
 
@@ -106,6 +108,12 @@ export function QuickAddDialog() {
         description: description.trim(),
         sortOrder: Date.now(),
       });
+    } else if (destination === "weekly") {
+      await addWeeklyTask(user.uid, {
+        title: title.trim(),
+        description: description.trim(),
+        sortOrder: Date.now(),
+      });
     } else {
       const assignedDate = destination === "backlog" ? null : format(new Date(), "yyyy-MM-dd");
       await addTodoItem(user.uid, {
@@ -160,7 +168,7 @@ export function QuickAddDialog() {
               ))}
             </div>
           </div>
-          {destination !== "daily" && (
+          {destination !== "daily" && destination !== "weekly" && (
             <div>
               <label className="text-xs font-medium text-muted-foreground">
                 Deadline (optional)

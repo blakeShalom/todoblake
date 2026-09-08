@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { onSnapshot, query, collection, where, orderBy, Timestamp, getDocs } from "firebase/firestore";
 import { useAuth } from "@/components/auth/auth-provider";
 import { getFirebaseDb } from "@/lib/firebase/config";
-import { TodoItem, DailyTaskCompletion } from "@/lib/types";
+import { TodoItem, DailyTaskCompletion, WeeklyTaskCompletion } from "@/lib/types";
 
 export type TimeFilter = "24h" | "7d" | "30d" | "all";
 
@@ -12,6 +12,13 @@ export interface DailyCompletionWithTitle {
   id: string;
   taskTitle: string;
   date: string;
+  completedAt: Timestamp;
+}
+
+export interface WeeklyCompletionWithTitle {
+  id: string;
+  taskTitle: string;
+  weekStart: string;
   completedAt: Timestamp;
 }
 
@@ -28,6 +35,7 @@ export function useHistory(filter: TimeFilter) {
   const { user } = useAuth();
   const [items, setItems] = useState<TodoItem[]>([]);
   const [dailyCompletions, setDailyCompletions] = useState<DailyCompletionWithTitle[]>([]);
+  const [weeklyCompletions, setWeeklyCompletions] = useState<WeeklyCompletionWithTitle[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -95,5 +103,44 @@ export function useHistory(filter: TimeFilter) {
     return unsubscribe;
   }, [user, filter]);
 
-  return { items, dailyCompletions, loading };
+  useEffect(() => {
+    if (!user) return;
+
+    const db = getFirebaseDb();
+    const completionsCol = collection(db, "users", user.uid, "weeklyTaskCompletions");
+    const startTs = getStartTimestamp(filter);
+
+    const constraints = [
+      ...(startTs ? [where("completedAt", ">=", startTs)] : []),
+      orderBy("completedAt", "desc"),
+    ];
+
+    const q = query(completionsCol, ...constraints);
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const completions = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as WeeklyTaskCompletion[];
+
+      const tasksCol = collection(db, "users", user.uid, "weeklyTasks");
+      const tasksSnap = await getDocs(tasksCol);
+      const taskNames = new Map<string, string>();
+      tasksSnap.docs.forEach((doc) => {
+        taskNames.set(doc.id, doc.data().title);
+      });
+
+      const results: WeeklyCompletionWithTitle[] = completions.map((completion) => ({
+        id: completion.id,
+        taskTitle: taskNames.get(completion.taskId) || "Unknown task",
+        weekStart: completion.weekStart,
+        completedAt: completion.completedAt,
+      }));
+
+      setWeeklyCompletions(results);
+    });
+
+    return unsubscribe;
+  }, [user, filter]);
+
+  return { items, dailyCompletions, weeklyCompletions, loading };
 }

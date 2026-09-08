@@ -11,7 +11,13 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { getFirebaseDb } from "./config";
-import { SlotType, TodoItem, DailyTask, RecurrenceFrequency } from "@/lib/types";
+import {
+  SlotType,
+  TodoItem,
+  DailyTask,
+  WeeklyTask,
+  RecurrenceFrequency,
+} from "@/lib/types";
 
 function todoItemsCollection(uid: string) {
   return collection(getFirebaseDb(), "users", uid, "todoItems");
@@ -23,6 +29,14 @@ function dailyTasksCollection(uid: string) {
 
 function dailyTaskCompletionsCollection(uid: string) {
   return collection(getFirebaseDb(), "users", uid, "dailyTaskCompletions");
+}
+
+function weeklyTasksCollection(uid: string) {
+  return collection(getFirebaseDb(), "users", uid, "weeklyTasks");
+}
+
+function weeklyTaskCompletionsCollection(uid: string) {
+  return collection(getFirebaseDb(), "users", uid, "weeklyTaskCompletions");
 }
 
 export function todayItemsQuery(uid: string, date: string) {
@@ -64,6 +78,21 @@ export function dailyCompletionsQuery(uid: string, date: string) {
   return query(
     dailyTaskCompletionsCollection(uid),
     where("date", "==", date)
+  );
+}
+
+export function weeklyTasksQuery(uid: string) {
+  return query(
+    weeklyTasksCollection(uid),
+    where("active", "==", true),
+    orderBy("sortOrder", "asc")
+  );
+}
+
+export function weeklyCompletionsQuery(uid: string, weekStart: string) {
+  return query(
+    weeklyTaskCompletionsCollection(uid),
+    where("weekStart", "==", weekStart)
   );
 }
 
@@ -211,6 +240,54 @@ export async function toggleDailyTaskCompletion(
     await addDoc(dailyTaskCompletionsCollection(uid), {
       taskId,
       date,
+      completedAt: serverTimestamp(),
+    });
+  }
+}
+
+export async function addWeeklyTask(
+  uid: string,
+  data: { title: string; description?: string; sortOrder: number }
+): Promise<string> {
+  const docRef = await addDoc(weeklyTasksCollection(uid), {
+    title: data.title,
+    description: data.description || "",
+    sortOrder: data.sortOrder,
+    active: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return docRef.id;
+}
+
+export async function updateWeeklyTask(
+  uid: string,
+  taskId: string,
+  data: Partial<Pick<WeeklyTask, "title" | "description" | "sortOrder" | "active">>
+) {
+  const db = getFirebaseDb();
+  const docRef = doc(db, "users", uid, "weeklyTasks", taskId);
+  await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
+}
+
+export async function deleteWeeklyTask(uid: string, taskId: string) {
+  const db = getFirebaseDb();
+  await deleteDoc(doc(db, "users", uid, "weeklyTasks", taskId));
+}
+
+export async function toggleWeeklyTaskCompletion(
+  uid: string,
+  taskId: string,
+  weekStart: string,
+  completionId: string | null
+) {
+  const db = getFirebaseDb();
+  if (completionId) {
+    await deleteDoc(doc(db, "users", uid, "weeklyTaskCompletions", completionId));
+  } else {
+    await addDoc(weeklyTaskCompletionsCollection(uid), {
+      taskId,
+      weekStart,
       completedAt: serverTimestamp(),
     });
   }

@@ -37,6 +37,23 @@ export interface DailyTaskCompletion {
   completedAt: Timestamp;
 }
 
+export interface WeeklyTask {
+  id: string;
+  title: string;
+  description: string;
+  sortOrder: number;
+  active: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface WeeklyTaskCompletion {
+  id: string;
+  taskId: string;
+  weekStart: string;
+  completedAt: Timestamp;
+}
+
 export interface UserProfile {
   uid: string;
   email: string;
