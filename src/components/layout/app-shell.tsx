@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { CalendarCheck, List, RotateCcw, CheckCircle, LogOut } from "lucide-react";
+import { CalendarCheck, List, RotateCcw, CalendarDays, CheckCircle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-provider";
 import { signOut } from "@/lib/firebase/auth";
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: "/today", label: "Today", icon: CalendarCheck },
   { href: "/backlog", label: "Backlog", icon: List },
   { href: "/daily-tasks", label: "Daily", icon: RotateCcw },
+  { href: "/weekly-tasks", label: "Weekly", icon: CalendarDays },
   { href: "/history", label: "History", icon: CheckCircle },
 ];
 

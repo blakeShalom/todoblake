@@ -17,7 +17,7 @@ const FILTER_OPTIONS: { value: TimeFilter; label: string }[] = [
   { value: "all", label: "All time" },
 ];
 
-type SlotFilter = "all" | SlotType | "daily";
+type SlotFilter = "all" | SlotType | "daily" | "weekly";
 
 const SLOT_LABELS: Record<SlotType, string> = {
   essential: "Essential",
@@ -33,23 +33,26 @@ const SLOT_FILTER_OPTIONS: { value: SlotFilter; label: string }[] = [
   { value: "outcome", label: "Outcome" },
   { value: "backlog", label: "Backlog" },
   { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
 ];
 
 export default function HistoryPage() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("24h");
   const [slotFilter, setSlotFilter] = useState<SlotFilter>("all");
-  const { items, dailyCompletions, loading, syncState } =
+  const { items, dailyCompletions, weeklyCompletions, loading, syncState } =
     useHistory(timeFilter);
 
   const filtered = items.filter((item) => {
     if (slotFilter === "all") return true;
-    if (slotFilter === "daily") return false;
+    if (slotFilter === "daily" || slotFilter === "weekly") return false;
     return item.slot === slotFilter;
   });
 
   const showDaily = slotFilter === "all" || slotFilter === "daily";
-  const totalCount = (slotFilter === "daily" ? 0 : filtered.length) +
-    (showDaily ? dailyCompletions.length : 0);
+  const showWeekly = slotFilter === "all" || slotFilter === "weekly";
+  const totalCount = (slotFilter === "daily" || slotFilter === "weekly" ? 0 : filtered.length) +
+    (showDaily ? dailyCompletions.length : 0) +
+    (showWeekly ? weeklyCompletions.length : 0);
 
   return (
     <ProtectedRoute>
@@ -97,7 +100,7 @@ export default function HistoryPage() {
             </p>
           ) : (
             <div className="space-y-1.5">
-              {slotFilter !== "daily" &&
+              {slotFilter !== "daily" && slotFilter !== "weekly" &&
                 filtered.map((item) => (
                   <div
                     key={item.id}
@@ -131,6 +134,25 @@ export default function HistoryPage() {
                     {dc.completedAt && (
                       <span className="text-xs text-muted-foreground">
                         {format(dc.completedAt.toDate(), "MMM d, h:mm a")}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              {showWeekly &&
+                weeklyCompletions.map((wc) => (
+                  <div
+                    key={wc.id}
+                    className="flex items-center gap-3 rounded-lg border p-3"
+                  >
+                    <span className="flex-1 text-sm text-muted-foreground line-through">
+                      {wc.taskTitle}
+                    </span>
+                    <Badge variant="outline" className="text-xs">
+                      Weekly
+                    </Badge>
+                    {wc.completedAt && (
+                      <span className="text-xs text-muted-foreground">
+                        {format(wc.completedAt.toDate(), "MMM d, h:mm a")}
                       </span>
                     )}
                   </div>
