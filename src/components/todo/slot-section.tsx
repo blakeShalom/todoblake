@@ -30,6 +30,8 @@ export function SlotSection({ title, icon, slot, items }: SlotSectionProps) {
     deadline: string | null;
     scheduledDate: string | null;
     recurrence: import("@/lib/types").RecurrenceFrequency | null;
+    notifyOnDeadline: boolean;
+    notifyOnScheduledDate: boolean;
   }) {
     if (!user) return;
     await addTodoItem(user.uid, {
@@ -38,6 +40,8 @@ export function SlotSection({ title, icon, slot, items }: SlotSectionProps) {
       slot,
       assignedDate: format(new Date(), "yyyy-MM-dd"),
       deadline: data.deadline,
+      notifyOnDeadline: data.notifyOnDeadline,
+      notifyOnScheduledDate: false,
       sortOrder: items.length,
     });
   }
@@ -59,12 +63,15 @@ export function SlotSection({ title, icon, slot, items }: SlotSectionProps) {
     deadline: string | null;
     scheduledDate: string | null;
     recurrence: import("@/lib/types").RecurrenceFrequency | null;
+    notifyOnDeadline: boolean;
+    notifyOnScheduledDate: boolean;
   }) {
     if (!user || !editItem) return;
     await updateTodoItem(user.uid, editItem.id, {
       title: data.title,
       description: data.description,
       deadline: data.deadline,
+      notifyOnDeadline: data.notifyOnDeadline,
     });
     setEditItem(null);
   }
@@ -127,6 +134,8 @@ export function SlotSection({ title, icon, slot, items }: SlotSectionProps) {
             title: editItem.title,
             description: editItem.description,
             deadline: editItem.deadline,
+            notifyOnDeadline: editItem.notifyOnDeadline,
+            notifyOnScheduledDate: editItem.notifyOnScheduledDate,
           }}
         />
       )}

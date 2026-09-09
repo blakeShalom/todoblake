@@ -14,7 +14,13 @@ export interface TodoItem {
   deadline: string | null;
   completed: boolean;
   completedAt: Timestamp | null;
+  notifyOnDeadline: boolean;
+  notifyOnScheduledDate: boolean;
+  lastNotificationSentFor?: Record<string, string> | null;
+  lastNotificationSentAt?: Timestamp | null;
+  notificationCompletedAt?: Timestamp | null;
   sortOrder: number;
+  priorityOrder?: number | null;
   recurrence: RecurrenceFrequency | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -61,6 +67,27 @@ export interface UserProfile {
   photoURL: string | null;
   createdAt: Timestamp;
   lastLoginAt: Timestamp;
+}
+
+export interface NotificationDeviceTarget {
+  token: string;
+  userAgent: string;
+  createdAt: Timestamp;
+  lastSeenAt: Timestamp;
+}
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  dailyTime: string;
+  timezone: string;
+  devices?: Record<string, NotificationDeviceTarget>;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface SyncState {
+  fromCache: boolean;
+  hasPendingWrites: boolean;
 }
 
 export const SLOT_LIMITS: Record<Exclude<SlotType, "backlog">, number> = {

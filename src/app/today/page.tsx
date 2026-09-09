@@ -18,6 +18,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { SlotSection } from "@/components/todo/slot-section";
 import { DailyTaskItem } from "@/components/todo/daily-task-item";
 import { WeeklyTaskItem } from "@/components/todo/weekly-task-item";
+import { SyncIndicator } from "@/components/sync/sync-indicator";
 import { useTodayItems } from "@/lib/hooks/use-today-items";
 import { useDailyTasks } from "@/lib/hooks/use-daily-tasks";
 import { useWeeklyTasks } from "@/lib/hooks/use-weekly-tasks";
@@ -55,22 +56,46 @@ function DeadlineItem({ item }: { item: TodoItem }) {
 
 export default function TodayPage() {
   const today = new Date();
-  const { getSlotItems, loading } = useTodayItems(today);
-  const { tasks, isCompleted, getCompletionId, loading: tasksLoading } = useDailyTasks(today);
+  const { getSlotItems, loading, syncState } = useTodayItems(today);
+  const {
+    tasks,
+    isCompleted,
+    getCompletionId,
+    loading: tasksLoading,
+    syncState: tasksSyncState,
+  } = useDailyTasks(today);
   const {
     tasks: weeklyTasks,
     isCompleted: isWeeklyCompleted,
     getCompletionId: getWeeklyCompletionId,
     loading: weeklyTasksLoading,
     weekStart,
+    syncState: weeklySyncState,
   } = useWeeklyTasks(today);
-  const { next7Days, next8to30Days, loading: deadlinesLoading } = useUpcomingDeadlines();
+  const {
+    next7Days,
+    next8to30Days,
+    loading: deadlinesLoading,
+    syncState: deadlinesSyncState,
+  } = useUpcomingDeadlines();
   const { user } = useAuth();
   const dateStr = format(today, "yyyy-MM-dd");
   const [showWeeklyForm, setShowWeeklyForm] = useState(false);
   const [editWeeklyTask, setEditWeeklyTask] = useState<WeeklyTask | null>(null);
   const [weeklyTitle, setWeeklyTitle] = useState("");
   const [weeklyDescription, setWeeklyDescription] = useState("");
+  const pageSyncState = {
+    fromCache:
+      syncState.fromCache ||
+      tasksSyncState.fromCache ||
+      weeklySyncState.fromCache ||
+      deadlinesSyncState.fromCache,
+    hasPendingWrites:
+      syncState.hasPendingWrites ||
+      tasksSyncState.hasPendingWrites ||
+      weeklySyncState.hasPendingWrites ||
+      deadlinesSyncState.hasPendingWrites,
+  };
 
   async function handleWeeklySubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -108,14 +133,16 @@ export default function TodayPage() {
     setWeeklyTitle("");
     setWeeklyDescription("");
   }
-
   return (
     <ProtectedRoute>
       <AppShell>
         <div className="space-y-8">
-          <h1 className="text-2xl font-bold">
-            {format(today, "EEEE, MMMM d")}
-          </h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold">
+              {format(today, "EEEE, MMMM d")}
+            </h1>
+            <SyncIndicator syncState={pageSyncState} />
+          </div>
 
           {loading ? (
             <div className="flex justify-center py-12">
@@ -213,15 +240,13 @@ export default function TodayPage() {
                     completed={isCompleted(task.id)}
                     onToggle={() => {
                       if (!user) return;
-                      toggleDailyTaskCompletion(
+                      return toggleDailyTaskCompletion(
                         user.uid,
                         task.id,
                         dateStr,
                         getCompletionId(task.id)
                       );
                     }}
-                    onEdit={() => {}}
-                    onDelete={() => {}}
                   />
                 ))}
               </div>

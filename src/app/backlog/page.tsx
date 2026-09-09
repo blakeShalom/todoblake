@@ -1,23 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, ArrowUp, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { AppShell } from "@/components/layout/app-shell";
 import { TodoItem } from "@/components/todo/todo-item";
 import { TodoItemForm } from "@/components/todo/todo-item-form";
+import { SyncIndicator } from "@/components/sync/sync-indicator";
 import { useBacklog } from "@/lib/hooks/use-backlog";
 import { useAuth } from "@/components/auth/auth-provider";
 import {
   addTodoItem,
   updateTodoItem,
   deleteTodoItem,
+  updateTodoItemOrder,
 } from "@/lib/firebase/firestore";
 import { TodoItem as TodoItemType, SlotType, RecurrenceFrequency } from "@/lib/types";
+import { preserveRecentlyCompletedOrder } from "@/lib/backlog-completion-hold";
 
 type PromoteSlot = "essential" | "priority" | "outcome";
 
@@ -37,20 +39,88 @@ const RECURRENCE_LABELS: Record<RecurrenceFrequency, string> = {
   yearly: "Yearly",
 };
 
+const COMPLETION_HOLD_MS = 450;
+
 export default function BacklogPage() {
-  const { items, scheduled, loading } = useBacklog();
+  const { items, scheduled, loading, syncState } = useBacklog();
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<TodoItemType | null>(null);
-  const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "completed">("active");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showScheduled, setShowScheduled] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [recentlyCompleted, setRecentlyCompleted] = useState<Set<string>>(
+    new Set()
+  );
+  const [completionHoldOrder, setCompletionHoldOrder] = useState<
+    Map<string, number>
+  >(new Map());
+  const dragOverRef = useRef<string | null>(null);
+  const completionHoldTimers = useRef<
+    Map<string, ReturnType<typeof setTimeout>>
+  >(new Map());
 
   const filtered = items.filter((item) => {
-    if (filter === "active") return !item.completed;
+    if (filter === "active") {
+      return !item.completed || recentlyCompleted.has(item.id);
+    }
     if (filter === "completed") return item.completed;
     return true;
   });
+  const visibleItems =
+    filter === "all" || filter === "active"
+      ? preserveRecentlyCompletedOrder(
+          filtered,
+          recentlyCompleted,
+          completionHoldOrder
+        )
+      : filtered;
+
+  useEffect(() => {
+    const timers = completionHoldTimers.current;
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
+    };
+  }, []);
+
+  function clearCompletionHold(id: string) {
+    const timer = completionHoldTimers.current.get(id);
+    if (timer) clearTimeout(timer);
+    completionHoldTimers.current.delete(id);
+    setRecentlyCompleted((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setCompletionHoldOrder((prev) => {
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  function holdCompletedItemInPlace(id: string) {
+    if (filter !== "all" && filter !== "active") return;
+
+    setCompletionHoldOrder(
+      new Map(visibleItems.map((item, index) => [item.id, index]))
+    );
+    setRecentlyCompleted((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+
+    const previousTimer = completionHoldTimers.current.get(id);
+    if (previousTimer) clearTimeout(previousTimer);
+    completionHoldTimers.current.set(
+      id,
+      setTimeout(() => clearCompletionHold(id), COMPLETION_HOLD_MS)
+    );
+  }
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -63,6 +133,72 @@ export default function BacklogPage() {
 
   function clearSelection() {
     setSelected(new Set());
+  }
+
+  async function handleReorder(sourceId: string, targetId: string) {
+    if (!user || sourceId === targetId) {
+      setDraggingId(null);
+      setDragOverId(null);
+      dragOverRef.current = null;
+      return;
+    }
+
+    const fromIndex = visibleItems.findIndex((item) => item.id === sourceId);
+    const toIndex = visibleItems.findIndex((item) => item.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) {
+      setDraggingId(null);
+      setDragOverId(null);
+      dragOverRef.current = null;
+      return;
+    }
+
+    const reordered = [...visibleItems];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    await updateTodoItemOrder(
+      user.uid,
+      reordered.map((item) => item.id)
+    );
+    setDraggingId(null);
+    setDragOverId(null);
+    dragOverRef.current = null;
+  }
+
+  function handleReorderStart(
+    id: string,
+    event: React.PointerEvent<HTMLButtonElement>
+  ) {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDraggingId(id);
+    setDragOverId(null);
+    dragOverRef.current = null;
+
+    function handlePointerMove(moveEvent: PointerEvent) {
+      const target = document
+        .elementFromPoint(moveEvent.clientX, moveEvent.clientY)
+        ?.closest<HTMLElement>("[data-todo-item-id]");
+      const targetId = target?.dataset.todoItemId ?? null;
+      const nextDragOverId = targetId && targetId !== id ? targetId : null;
+      dragOverRef.current = nextDragOverId;
+      setDragOverId(nextDragOverId);
+    }
+
+    function handlePointerUp() {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      const targetId = dragOverRef.current;
+      if (targetId) {
+        handleReorder(id, targetId);
+      } else {
+        setDraggingId(null);
+        setDragOverId(null);
+        dragOverRef.current = null;
+      }
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp, { once: true });
   }
 
   async function handlePromoteSelected(slot: PromoteSlot) {
@@ -81,6 +217,8 @@ export default function BacklogPage() {
     deadline: string | null;
     scheduledDate: string | null;
     recurrence: RecurrenceFrequency | null;
+    notifyOnDeadline: boolean;
+    notifyOnScheduledDate: boolean;
     slot: SlotType;
   }) {
     if (!user) return;
@@ -92,6 +230,8 @@ export default function BacklogPage() {
       scheduledDate: data.scheduledDate,
       deadline: data.deadline,
       recurrence: data.recurrence,
+      notifyOnDeadline: data.notifyOnDeadline,
+      notifyOnScheduledDate: data.notifyOnScheduledDate,
       sortOrder: items.length,
     });
   }
@@ -99,7 +239,22 @@ export default function BacklogPage() {
   async function handleToggle(id: string, completed: boolean) {
     if (!user) return;
     const item = items.find((i) => i.id === id);
-    await updateTodoItem(user.uid, id, { completed }, item);
+    if (completed) holdCompletedItemInPlace(id);
+    try {
+      await updateTodoItem(user.uid, id, { completed }, item);
+      if (completed) {
+        setSelected((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      } else {
+        clearCompletionHold(id);
+      }
+    } catch (error) {
+      if (completed) clearCompletionHold(id);
+      throw error;
+    }
   }
 
   async function handleDelete(id: string) {
@@ -113,6 +268,8 @@ export default function BacklogPage() {
     deadline: string | null;
     scheduledDate: string | null;
     recurrence: RecurrenceFrequency | null;
+    notifyOnDeadline: boolean;
+    notifyOnScheduledDate: boolean;
   }) {
     if (!user || !editItem) return;
     await updateTodoItem(user.uid, editItem.id, {
@@ -121,6 +278,8 @@ export default function BacklogPage() {
       deadline: data.deadline,
       scheduledDate: data.scheduledDate,
       recurrence: data.recurrence,
+      notifyOnDeadline: data.notifyOnDeadline,
+      notifyOnScheduledDate: data.notifyOnScheduledDate,
     });
     setEditItem(null);
   }
@@ -132,6 +291,7 @@ export default function BacklogPage() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Backlog</h1>
             <div className="flex gap-2">
+              <SyncIndicator syncState={syncState} />
               <Button
                 size="sm"
                 variant="outline"
@@ -199,26 +359,22 @@ export default function BacklogPage() {
             </div>
           ) : (
             <div className="space-y-1.5">
-              {filtered.map((item) => (
-                <div key={item.id} className="flex items-center gap-2">
-                  {!item.completed && (
-                    <Checkbox
-                      checked={selected.has(item.id)}
-                      onCheckedChange={() => toggleSelect(item.id)}
-                      className="shrink-0"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <TodoItem
-                      item={item}
-                      onToggle={handleToggle}
-                      onDelete={handleDelete}
-                      onEdit={setEditItem}
-                    />
-                  </div>
-                </div>
+              {visibleItems.map((item) => (
+                <TodoItem
+                  key={item.id}
+                  item={item}
+                  onToggle={handleToggle}
+                  onDelete={handleDelete}
+                  onEdit={setEditItem}
+                  selected={selected.has(item.id)}
+                  onSelect={toggleSelect}
+                  draggableItem
+                  dragging={draggingId === item.id}
+                  dragOver={dragOverId === item.id && draggingId !== item.id}
+                  onReorderStart={handleReorderStart}
+                />
               ))}
-              {filtered.length === 0 && (
+              {visibleItems.length === 0 && (
                 <p className="py-8 text-center text-muted-foreground">
                   {filter === "all"
                     ? "No items in backlog"
@@ -275,6 +431,8 @@ export default function BacklogPage() {
                 deadline: editItem.deadline,
                 scheduledDate: editItem.scheduledDate,
                 recurrence: editItem.recurrence,
+                notifyOnDeadline: editItem.notifyOnDeadline,
+                notifyOnScheduledDate: editItem.notifyOnScheduledDate,
               }}
             />
           )}

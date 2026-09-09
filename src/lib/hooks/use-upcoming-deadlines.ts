@@ -5,12 +5,15 @@ import { onSnapshot, query, collection, where, orderBy } from "firebase/firestor
 import { format, addDays } from "date-fns";
 import { useAuth } from "@/components/auth/auth-provider";
 import { getFirebaseDb } from "@/lib/firebase/config";
-import { TodoItem } from "@/lib/types";
+import { SyncState, TodoItem } from "@/lib/types";
+
+const SYNCED: SyncState = { fromCache: false, hasPendingWrites: false };
 
 export function useUpcomingDeadlines() {
   const { user } = useAuth();
   const [items, setItems] = useState<TodoItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncState, setSyncState] = useState<SyncState>(SYNCED);
 
   const today = format(new Date(), "yyyy-MM-dd");
   const thirtyDaysOut = format(addDays(new Date(), 30), "yyyy-MM-dd");
@@ -29,12 +32,16 @@ export function useUpcomingDeadlines() {
       orderBy("deadline", "asc")
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
       const results: TodoItem[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as TodoItem[];
       setItems(results);
+      setSyncState({
+        fromCache: snapshot.metadata.fromCache,
+        hasPendingWrites: snapshot.metadata.hasPendingWrites,
+      });
       setLoading(false);
     });
 
@@ -46,5 +53,5 @@ export function useUpcomingDeadlines() {
   const next7Days = items.filter((item) => item.deadline! <= sevenDaysOut);
   const next8to30Days = items.filter((item) => item.deadline! > sevenDaysOut);
 
-  return { next7Days, next8to30Days, loading };
+  return { next7Days, next8to30Days, loading, syncState };
 }
