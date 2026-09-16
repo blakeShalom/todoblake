@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,17 +23,20 @@ import {
 } from "@/lib/firebase/firestore";
 import { DailyTask } from "@/lib/types";
 import { DailyTaskItem } from "@/components/todo/daily-task-item";
+import { SyncIndicator } from "@/components/sync/sync-indicator";
 import { format } from "date-fns";
 
 export default function DailyTasksPage() {
   const today = new Date();
   const dateStr = format(today, "yyyy-MM-dd");
-  const { tasks, loading, isCompleted, getCompletionId } = useDailyTasks(today);
+  const { tasks, loading, syncState, isCompleted, getCompletionId } =
+    useDailyTasks(today);
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editTask, setEditTask] = useState<DailyTask | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [deletePending, setDeletePending] = useState(false);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -60,9 +63,17 @@ export default function DailyTasksPage() {
     setDescription("");
   }
 
-  async function handleDelete(id: string) {
-    if (!user) return;
-    await deleteDailyTask(user.uid, id);
+  async function handleDelete() {
+    if (!user || !editTask) return;
+    if (!window.confirm(`Delete "${editTask.title}"? This cannot be undone.`)) return;
+
+    setDeletePending(true);
+    try {
+      await deleteDailyTask(user.uid, editTask.id);
+      closeForm();
+    } finally {
+      setDeletePending(false);
+    }
   }
 
   function openEdit(task: DailyTask) {
@@ -84,14 +95,17 @@ export default function DailyTasksPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Daily Tasks</h1>
-            <Button
-              size="sm"
-              className="gap-1"
-              onClick={() => setShowForm(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Add
-            </Button>
+            <div className="flex items-center gap-2">
+              <SyncIndicator syncState={syncState} />
+              <Button
+                size="sm"
+                className="gap-1"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Add
+              </Button>
+            </div>
           </div>
 
           <p className="text-sm text-muted-foreground">
@@ -111,7 +125,7 @@ export default function DailyTasksPage() {
                   completed={isCompleted(task.id)}
                   onToggle={() => {
                     if (!user) return;
-                    toggleDailyTaskCompletion(
+                    return toggleDailyTaskCompletion(
                       user.uid,
                       task.id,
                       dateStr,
@@ -119,7 +133,6 @@ export default function DailyTasksPage() {
                     );
                   }}
                   onEdit={openEdit}
-                  onDelete={handleDelete}
                 />
               ))}
               {tasks.length === 0 && (
@@ -151,10 +164,22 @@ export default function DailyTasksPage() {
                   rows={2}
                 />
                 <div className="flex justify-end gap-2">
+                  {editTask && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="mr-auto gap-1.5"
+                      disabled={deletePending}
+                      onClick={handleDelete}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {deletePending ? "Deleting…" : "Delete"}
+                    </Button>
+                  )}
                   <Button type="button" variant="outline" onClick={closeForm}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={!title.trim()}>
+                  <Button type="submit" disabled={!title.trim() || deletePending}>
                     {editTask ? "Save" : "Add"}
                   </Button>
                 </div>

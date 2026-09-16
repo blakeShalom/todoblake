@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/functions/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -19,6 +20,7 @@
 
 # production
 /build
+/functions/lib
 
 # misc
 .DS_Store
@@ -33,6 +35,12 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+
+# Firebase CLI project selection is local to each deployer.
+.firebaserc
+firebase-debug.log*
+*-firebase-adminsdk-*.json
+service-account*.json
 
 
 # vercel

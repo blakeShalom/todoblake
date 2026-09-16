@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isApproved(uid) {
+      return isSignedInAs(uid)
+        && exists(/databases/$(database)/documents/access/$(uid));
+    }
+
+    // Access documents are created only from the Firebase console or another
+    // trusted Admin SDK environment. Client applications can never grant access.
+    match /access/{uid} {
+      allow get: if isSignedInAs(uid);
+      allow list, create, update, delete: if false;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isApproved(uid);
+
+      match /{document=**} {
+        allow read, write: if isApproved(uid);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
