@@ -53,6 +53,14 @@ export function SlotSection({ title, icon, slot, items }: SlotSectionProps) {
     await deleteTodoItem(user.uid, id);
   }
 
+  async function handleMoveToBacklog(id: string) {
+    if (!user) return;
+    await updateTodoItem(user.uid, id, {
+      slot: "backlog",
+      assignedDate: null,
+    });
+  }
+
   async function handleEdit(data: {
     title: string;
     description: string;
@@ -101,6 +109,7 @@ export function SlotSection({ title, icon, slot, items }: SlotSectionProps) {
             onToggle={handleToggle}
             onDelete={handleDelete}
             onEdit={setEditItem}
+            onMoveToBacklog={slot === "backlog" ? undefined : handleMoveToBacklog}
           />
         ))}
         {items.length === 0 && (
