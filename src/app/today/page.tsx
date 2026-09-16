@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { AlertTriangle, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { SlotSection } from "@/components/todo/slot-section";
 import { DailyTaskItem } from "@/components/todo/daily-task-item";
 import { WeeklyTaskItem } from "@/components/todo/weekly-task-item";
+import { DailyCompletionCelebration } from "@/components/todo/daily-completion-celebration";
 import { SyncIndicator } from "@/components/sync/sync-indicator";
 import { useTodayItems } from "@/lib/hooks/use-today-items";
 import { useDailyTasks } from "@/lib/hooks/use-daily-tasks";
@@ -84,6 +85,28 @@ export default function TodayPage() {
   const [editWeeklyTask, setEditWeeklyTask] = useState<WeeklyTask | null>(null);
   const [weeklyTitle, setWeeklyTitle] = useState("");
   const [weeklyDescription, setWeeklyDescription] = useState("");
+  const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
+  const previousCompletionState = useRef<boolean | null>(null);
+  const todaySlotItems = [
+    ...getSlotItems("essential"),
+    ...getSlotItems("priority"),
+    ...getSlotItems("outcome"),
+  ];
+  const totalTodayTasks = todaySlotItems.length + tasks.length + weeklyTasks.length;
+  const completedTodayTasks =
+    todaySlotItems.filter((item) => item.completed).length +
+    tasks.filter((task) => isCompleted(task.id)).length +
+    weeklyTasks.filter((task) => isWeeklyCompleted(task.id)).length;
+  const allTodayTasksComplete = totalTodayTasks > 0 && completedTodayTasks === totalTodayTasks;
+
+  useEffect(() => {
+    if (loading || tasksLoading || weeklyTasksLoading) return;
+
+    if (previousCompletionState.current === false && allTodayTasksComplete) {
+      setShowCompletionCelebration(true);
+    }
+    previousCompletionState.current = allTodayTasksComplete;
+  }, [allTodayTasksComplete, loading, tasksLoading, weeklyTasksLoading]);
   const pageSyncState = {
     fromCache:
       syncState.fromCache ||
@@ -136,6 +159,10 @@ export default function TodayPage() {
   return (
     <ProtectedRoute>
       <AppShell>
+        <DailyCompletionCelebration
+          open={showCompletionCelebration}
+          onClose={() => setShowCompletionCelebration(false)}
+        />
         <div className="space-y-8">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">

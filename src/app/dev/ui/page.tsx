@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import type { Timestamp } from "firebase/firestore";
-import { CheckCircle, Clock, Plus } from "lucide-react";
+import { CheckCircle, Clock, PartyPopper, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DailyTaskItem } from "@/components/todo/daily-task-item";
+import { DailyCompletionCelebration } from "@/components/todo/daily-completion-celebration";
 import { TodoItem } from "@/components/todo/todo-item";
 import { TodoItemForm } from "@/components/todo/todo-item-form";
 import { SyncIndicator } from "@/components/sync/sync-indicator";
@@ -104,6 +105,7 @@ export default function DevUiPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set(["recurring"]));
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showLongForm, setShowLongForm] = useState(false);
+  const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
   const [lastSubmit, setLastSubmit] = useState<string>("No form submissions yet.");
 
   if (process.env.NODE_ENV === "production") {
@@ -283,6 +285,19 @@ export default function DevUiPage() {
         <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-xs">{lastSubmit}</pre>
       </section>
 
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-orange-200 bg-orange-50/70 p-4 dark:border-orange-900 dark:bg-orange-950/20">
+        <div>
+          <h2 className="text-sm font-semibold">Daily completion celebration</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Preview the moment that appears after the last daily task is checked off.
+          </p>
+        </div>
+        <Button onClick={() => setShowCompletionCelebration(true)}>
+          <PartyPopper className="h-4 w-4" />
+          Preview animation
+        </Button>
+      </section>
+
       <TodoItemForm
         open={showCreateForm}
         onClose={() => setShowCreateForm(false)}
@@ -307,6 +322,11 @@ export default function DevUiPage() {
           notifyOnDeadline: true,
           notifyOnScheduledDate: true,
         }}
+      />
+
+      <DailyCompletionCelebration
+        open={showCompletionCelebration}
+        onClose={() => setShowCompletionCelebration(false)}
       />
     </main>
   );

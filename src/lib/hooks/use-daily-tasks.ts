@@ -14,6 +14,7 @@ export function useDailyTasks(date?: Date) {
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [completions, setCompletions] = useState<DailyTaskCompletion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [completionsLoading, setCompletionsLoading] = useState(true);
   const [taskSyncState, setTaskSyncState] = useState<SyncState>(SYNCED);
   const [completionSyncState, setCompletionSyncState] = useState<SyncState>(SYNCED);
 
@@ -44,6 +45,7 @@ export function useDailyTasks(date?: Date) {
           ...doc.data(),
         })) as DailyTaskCompletion[];
         setCompletions(results);
+        setCompletionsLoading(false);
         setCompletionSyncState({
           fromCache: snapshot.metadata.fromCache,
           hasPendingWrites: snapshot.metadata.hasPendingWrites,
@@ -69,5 +71,12 @@ export function useDailyTasks(date?: Date) {
       taskSyncState.hasPendingWrites || completionSyncState.hasPendingWrites,
   };
 
-  return { tasks, completions, loading, syncState, isCompleted, getCompletionId };
+  return {
+    tasks,
+    completions,
+    loading: loading || completionsLoading,
+    syncState,
+    isCompleted,
+    getCompletionId,
+  };
 }
