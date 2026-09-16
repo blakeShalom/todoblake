@@ -14,6 +14,7 @@ interface TodoItemProps {
   onDelete: (id: string) => void;
   onEdit: (item: TodoItemType) => void;
   onMoveToBacklog?: (id: string) => void;
+  hideDeleteOnMobile?: boolean;
   selected?: boolean;
   onSelect?: (id: string) => void;
   draggableItem?: boolean;
@@ -31,6 +32,7 @@ export function TodoItem({
   onDelete,
   onEdit,
   onMoveToBacklog,
+  hideDeleteOnMobile = false,
   selected = false,
   onSelect,
   draggableItem = false,
@@ -49,7 +51,7 @@ export function TodoItem({
     setOptimisticCompleted(null);
   }
   const visualCompleted = optimisticCompleted ?? item.completed;
-  const selectable = !!onSelect && !visualCompleted;
+  const selectable = !!onSelect;
 
   function deadlineBadgeVariant(): "destructive" | "secondary" | "outline" {
     if (!item.deadline) return "outline";
@@ -181,22 +183,26 @@ export function TodoItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100"
+              className="h-7 w-7 shrink-0 opacity-100 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100 sm:focus-visible:pointer-events-auto sm:focus-visible:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit(item);
               }}
+              aria-label="Edit item"
+              title="Edit item"
             >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 shrink-0 text-destructive opacity-0 group-hover:opacity-100"
+              className={`${hideDeleteOnMobile ? "hidden sm:inline-flex" : "inline-flex"} h-7 w-7 shrink-0 text-destructive opacity-100 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100 sm:focus-visible:pointer-events-auto sm:focus-visible:opacity-100`}
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(item.id);
               }}
+              aria-label="Delete item"
+              title="Delete item"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

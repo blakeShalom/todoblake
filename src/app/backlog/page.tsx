@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, ArrowUp, Clock } from "lucide-react";
+import { Plus, ArrowUp, Clock, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +77,9 @@ export default function BacklogPage() {
           completionHoldOrder
         )
       : filtered;
+  const selectedItems = items.filter((item) => selected.has(item.id));
+  const canMoveSelected =
+    selectedItems.length > 0 && selectedItems.every((item) => !item.completed);
 
   useEffect(() => {
     const timers = completionHoldTimers.current;
@@ -204,9 +207,11 @@ export default function BacklogPage() {
   async function handlePromoteSelected(slot: PromoteSlot) {
     if (!user || selected.size === 0) return;
     const today = format(new Date(), "yyyy-MM-dd");
-    const promises = Array.from(selected).map((id) =>
-      updateTodoItem(user.uid, id, { slot, assignedDate: today })
-    );
+    const promises = Array.from(selected)
+      .filter((id) => items.some((item) => item.id === id && !item.completed))
+      .map((id) =>
+        updateTodoItem(user.uid, id, { slot, assignedDate: today })
+      );
     await Promise.all(promises);
     clearSelection();
   }
@@ -260,6 +265,14 @@ export default function BacklogPage() {
   async function handleDelete(id: string) {
     if (!user) return;
     await deleteTodoItem(user.uid, id);
+  }
+
+  async function handleDeleteSelected() {
+    if (!user || selected.size === 0) return;
+    await Promise.all(
+      Array.from(selected).map((id) => deleteTodoItem(user.uid, id))
+    );
+    clearSelection();
   }
 
   async function handleEdit(data: {
@@ -326,10 +339,13 @@ export default function BacklogPage() {
           </div>
 
           {selected.size > 0 && (
-            <div className="sticky top-16 z-30 flex items-center gap-2 rounded-lg border bg-background p-3 shadow-sm">
-              <ArrowUp className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">
-                {selected.size} selected — move to:
+            <div className="sticky top-16 z-30 flex flex-wrap items-center gap-2 rounded-lg border bg-background/95 p-3 shadow-sm backdrop-blur">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <ArrowUp className="h-4 w-4 text-muted-foreground" />
+                {selected.size} selected
+              </span>
+              <span className="basis-full text-xs text-muted-foreground sm:basis-auto">
+                Move to:
               </span>
               {PROMOTE_OPTIONS.map((opt) => (
                 <Button
@@ -337,6 +353,7 @@ export default function BacklogPage() {
                   size="sm"
                   variant="outline"
                   className="gap-1 text-xs"
+                  disabled={!canMoveSelected}
                   onClick={() => handlePromoteSelected(opt.value)}
                 >
                   {opt.icon} {opt.label}
@@ -344,11 +361,20 @@ export default function BacklogPage() {
               ))}
               <Button
                 size="sm"
+                variant="outline"
+                className="gap-1 text-xs text-destructive hover:text-destructive"
+                onClick={handleDeleteSelected}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </Button>
+              <Button
+                size="sm"
                 variant="ghost"
                 className="ml-auto text-xs"
                 onClick={clearSelection}
               >
-                Cancel
+                Clear
               </Button>
             </div>
           )}
@@ -368,6 +394,7 @@ export default function BacklogPage() {
                   onEdit={setEditItem}
                   selected={selected.has(item.id)}
                   onSelect={toggleSelect}
+                  hideDeleteOnMobile
                   draggableItem
                   dragging={draggingId === item.id}
                   dragOver={dragOverId === item.id && draggingId !== item.id}
