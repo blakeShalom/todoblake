@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, ChevronDown, ChevronUp, GripVertical, Pencil, Repeat } from "lucide-react";
+import { Archive, Trash2, ChevronDown, ChevronUp, GripVertical, Pencil, Repeat } from "lucide-react";
 import { TodoItem as TodoItemType } from "@/lib/types";
 import { format, isPast, isToday } from "date-fns";
 
@@ -13,6 +13,8 @@ interface TodoItemProps {
   onToggle: (id: string, completed: boolean) => void | Promise<void>;
   onDelete: (id: string) => void;
   onEdit: (item: TodoItemType) => void;
+  onMoveToBacklog?: (id: string) => void;
+  hideDeleteOnMobile?: boolean;
   selected?: boolean;
   onSelect?: (id: string) => void;
   draggableItem?: boolean;
@@ -29,6 +31,8 @@ export function TodoItem({
   onToggle,
   onDelete,
   onEdit,
+  onMoveToBacklog,
+  hideDeleteOnMobile = false,
   selected = false,
   onSelect,
   draggableItem = false,
@@ -47,7 +51,7 @@ export function TodoItem({
     setOptimisticCompleted(null);
   }
   const visualCompleted = optimisticCompleted ?? item.completed;
-  const selectable = !!onSelect && !visualCompleted;
+  const selectable = !!onSelect;
 
   function deadlineBadgeVariant(): "destructive" | "secondary" | "outline" {
     if (!item.deadline) return "outline";
@@ -161,25 +165,44 @@ export function TodoItem({
                 )}
               </Button>
             )}
+            {onMoveToBacklog && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveToBacklog(item.id);
+                }}
+                aria-label="Move to backlog"
+                title="Move to backlog"
+              >
+                <Archive className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100"
+              className="h-7 w-7 shrink-0 opacity-100 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100 sm:focus-visible:pointer-events-auto sm:focus-visible:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit(item);
               }}
+              aria-label="Edit item"
+              title="Edit item"
             >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 shrink-0 text-destructive opacity-0 group-hover:opacity-100"
+              className={`${hideDeleteOnMobile ? "hidden sm:inline-flex" : "inline-flex"} h-7 w-7 shrink-0 text-destructive opacity-100 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100 sm:focus-visible:pointer-events-auto sm:focus-visible:opacity-100`}
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(item.id);
               }}
+              aria-label="Delete item"
+              title="Delete item"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

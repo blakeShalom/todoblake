@@ -17,6 +17,7 @@ export function useWeeklyTasks(date?: Date) {
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
   const [completions, setCompletions] = useState<WeeklyTaskCompletion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [completionsLoading, setCompletionsLoading] = useState(true);
   const [taskSyncState, setTaskSyncState] = useState<SyncState>(SYNCED);
   const [completionSyncState, setCompletionSyncState] = useState<SyncState>(SYNCED);
 
@@ -51,6 +52,7 @@ export function useWeeklyTasks(date?: Date) {
           ...doc.data(),
         })) as WeeklyTaskCompletion[];
         setCompletions(results);
+        setCompletionsLoading(false);
         setCompletionSyncState({
           fromCache: snapshot.metadata.fromCache,
           hasPendingWrites: snapshot.metadata.hasPendingWrites,
@@ -79,7 +81,7 @@ export function useWeeklyTasks(date?: Date) {
   return {
     tasks,
     completions,
-    loading,
+    loading: loading || completionsLoading,
     weekStart,
     syncState,
     isCompleted,

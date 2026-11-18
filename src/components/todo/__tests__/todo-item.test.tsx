@@ -81,4 +81,21 @@ describe("TodoItem", () => {
 
     expect(screen.getByText("Write the thing")).toHaveClass("line-through");
   });
+
+  it("moves an item to the backlog when requested", () => {
+    const onMoveToBacklog = vi.fn();
+    render(
+      <TodoItem
+        item={item({ slot: "essential", assignedDate: "2026-05-20" })}
+        onToggle={() => {}}
+        onDelete={() => {}}
+        onEdit={() => {}}
+        onMoveToBacklog={onMoveToBacklog}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Move to backlog" }));
+
+    expect(onMoveToBacklog).toHaveBeenCalledWith("todo-1");
+  });
 });

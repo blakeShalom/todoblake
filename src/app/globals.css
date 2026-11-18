@@ -128,3 +128,113 @@
     @apply font-sans;
   }
 }
+
+@keyframes completion-celebration-card-in {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.92) rotate(-1deg);
+  }
+  70% {
+    transform: translateY(-4px) scale(1.015) rotate(0.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0);
+  }
+}
+
+@keyframes completion-celebration-medal-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-18deg);
+  }
+  70% {
+    transform: scale(1.08) rotate(6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes completion-celebration-piece-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -24px, 0) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--completion-drift, 24px), 92vh, 0) rotate(540deg);
+  }
+}
+
+@keyframes completion-celebration-glow {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.08);
+  }
+}
+
+.completion-celebration {
+  isolation: isolate;
+}
+
+.completion-celebration__glow {
+  position: absolute;
+  width: min(72vw, 34rem);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(251 146 60 / 32%), rgb(250 204 21 / 12%) 42%, transparent 70%);
+  filter: blur(10px);
+  animation: completion-celebration-glow 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.completion-celebration__card {
+  animation: completion-celebration-card-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.completion-celebration__medal {
+  animation: completion-celebration-medal-in 650ms 120ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.completion-celebration__confetti {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.completion-celebration__piece {
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 18px;
+  border-radius: 3px;
+  animation: completion-celebration-piece-fall 2.8s ease-in both;
+}
+
+.completion-celebration__piece:nth-child(odd) {
+  --completion-drift: -38px;
+}
+
+.completion-celebration__piece:nth-child(3n) {
+  --completion-drift: 52px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .completion-celebration__card,
+  .completion-celebration__medal,
+  .completion-celebration__glow,
+  .completion-celebration__piece {
+    animation: none;
+  }
+}
