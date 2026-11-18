@@ -27,6 +27,10 @@ restrictions, and Vercel spend notifications/controls in the provider consoles.
 
 ## Local setup
 
+Use Node.js 24.15.0 or a newer Node 24 release. This satisfies Firebase 13's
+Node requirement and jsdom's supported Node 24 range. With nvm, run
+`nvm install` and `nvm use` to select the version in `.nvmrc`, also used by CI.
+
 1. Create a new Firebase project that you control.
 2. Add a Web app and enable Authentication > Google.
 3. Create Firestore in production mode.
@@ -55,6 +59,10 @@ to create data at the project owner's expense. Do not commit `.env.local`,
 `.firebaserc`, service-account JSON, private keys, or notification secrets.
 
 ## Vercel deployment
+
+The root `package.json` engine range selects Node 24 for Vercel builds and
+functions. Keep the project's Node.js Version setting at 24.x and confirm the
+selected version in the deployment build log after this change.
 
 Import your fork into a new Vercel project and add the values from `.env.example`
 to that project. Never copy environment variables from someone else's
