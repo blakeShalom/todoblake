@@ -117,6 +117,12 @@ and Functions variables empty. This avoids their recurring cloud cost entirely.
 
 ## Commands
 
+The web app uses TypeScript 7's native `tsc` compiler through the
+`@typescript/native` npm alias. The `typescript` alias provides the TypeScript 6
+JavaScript API required by ESLint and editor plugins. Keep both aliases when
+updating TypeScript so linting remains compatible. `npx tsc --noEmit` and the
+default Next.js build checker use the TypeScript 7 CLI.
+
 ```bash
 npm run dev
 npm run lint
