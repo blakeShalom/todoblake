@@ -18,16 +18,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const auth = getFirebaseAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        await createOrUpdateUserProfile(user.uid, {
-          email: user.email!,
-          displayName: user.displayName!,
-          photoURL: user.photoURL,
-        });
-      }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      // Auth restoration must not wait on Firestore. A suspended app may resume
+      // offline, and setDoc can remain pending while the user is already known.
       setUser(user);
       setLoading(false);
+
+      if (user) {
+        void createOrUpdateUserProfile(user.uid, {
+          email: user.email ?? "",
+          displayName: user.displayName ?? "",
+          photoURL: user.photoURL,
+        }).catch((error) => {
+          console.error("Failed to update user profile", error);
+        });
+      }
     });
     return unsubscribe;
   }, []);
